@@ -10,6 +10,7 @@ import 'package:furrow/features/habits/domain/franklin_virtues.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/features/habits/domain/habit_logic.dart';
 import 'package:furrow/features/habits/presentation/furrow_row.dart';
+import 'package:furrow/features/habits/presentation/log_time_sheet.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
@@ -91,10 +92,13 @@ class _Grid extends ConsumerWidget {
           await repo.adjustCount(h, todayKey, 1);
           await checkAwards();
         case Cadence.duration:
-          if (context.mounted) context.push('/habit/${h.id}');
+          // Log time right here — the sheet handles writing + award recheck.
+          if (context.mounted) await showLogTimeSheet(context, h);
       }
     }
 
+    // Long-press is the "undo / step down" gesture for count; for binary it
+    // simply toggles, and for duration it opens the same log sheet.
     Future<void> longPressToday(Habit h) async {
       switch (Cadence.fromName(h.cadence)) {
         case Cadence.count:
@@ -104,7 +108,7 @@ class _Grid extends ConsumerWidget {
           await repo.setBinary(h, todayKey, !done);
           await checkAwards();
         case Cadence.duration:
-          if (context.mounted) context.push('/habit/${h.id}');
+          if (context.mounted) await showLogTimeSheet(context, h);
       }
     }
 

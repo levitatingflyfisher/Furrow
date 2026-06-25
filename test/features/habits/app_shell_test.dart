@@ -105,4 +105,59 @@ void main() {
     await db.close();
     await tester.pump(const Duration(seconds: 1));
   });
+
+  // Duration logging must NOT force a screen hop + a live stopwatch. Tapping a
+  // duration cell opens a log sheet directly, and a quick-add chip records a
+  // known duration in one tap. (Deterministic — no live Timer.periodic, so no
+  // "timer still pending" teardown trap.)
+  testWidgets('tapping a duration cell opens the log sheet; +15 logs 15 min',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    final repo = HabitsRepository(HabitsDao(db), HabitMarksDao(db));
+    final readId = await repo.createHabit(
+        name: 'Read', cadence: Cadence.duration, targetValue: 20 * 60);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      child: MaterialApp(
+        theme: _theme,
+        home: const AppShell(child: SizedBox.shrink()),
+      ),
+    ));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Tap today's duration cell — opens the log sheet, not a route push.
+    await tester.tap(find.byKey(ValueKey('today_$readId')));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 150)); // sheet slides in
+    }
+
+    expect(find.byKey(const ValueKey('quickadd_15')), findsOneWidget,
+        reason: 'the log sheet offers quick-add minutes up front');
+
+    await tester.tap(find.byKey(const ValueKey('quickadd_15')));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    final marks = await tester.runAsync(() => repo.allMarksOnce());
+    final logged = marks!.where((m) => m.habitId == readId).toList();
+    expect(logged.length, 1, reason: 'one quick-add session logged');
+    expect(logged.first.durationSecs, 15 * 60,
+        reason: '+15 must record 15 minutes');
+
+    await tester.pump(const Duration(seconds: 6)); // drain any award timers
+    await db.close();
+    await tester.pump(const Duration(seconds: 1));
+  });
 }
