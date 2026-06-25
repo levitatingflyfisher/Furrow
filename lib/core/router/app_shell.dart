@@ -66,7 +66,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Stack(
       alignment: Alignment.topCenter,
       children: [
-        mode == AppMode.flow ? _flow(context) : _rich(context),
+        // Positioned.fill gives the Scaffold TIGHT constraints. As a bare
+        // (non-positioned) Stack child it would get loose ones and collapse the
+        // body to zero height, so the Today grid's lazy ListView built nothing.
+        Positioned.fill(
+          child: mode == AppMode.flow ? _flow(context) : _rich(context),
+        ),
         // Gentle confetti: few particles, slow drift, furrow/gold/linen only.
         ConfettiWidget(
           confettiController: _confetti,
@@ -111,7 +116,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         bottomNavigationBar: const SafeArea(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: Center(child: ModePill()),
+            // A Row (not Center) so the bar sizes to the pill's height; Center
+            // has no intrinsic height and would expand to eat the whole body.
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [ModePill()],
+            ),
           ),
         ),
       );
