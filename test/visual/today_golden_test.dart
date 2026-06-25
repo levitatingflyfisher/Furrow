@@ -10,15 +10,27 @@ import 'package:furrow/features/habits/data/habits_repository.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/features/habits/presentation/today_screen.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
-import 'package:furrow/shared/theme/app_theme.dart';
+import 'package:furrow/shared/theme/app_colors.dart';
 
-import 'google_fonts_stub.dart';
 import 'visual_golden_helper.dart';
+
+// A plain (Roboto) theme with Furrow's real colour scheme — avoids the
+// google_fonts runtime-fetch path in headless goldens while keeping the layout
+// and palette faithful. (The live app uses the google_fonts theme; fonts load
+// from the CDN there.)
+final _theme = ThemeData(
+  useMaterial3: true,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: AppColors.furrow500,
+    surface: AppColors.linen100,
+    onSurface: AppColors.linen900,
+  ),
+  scaffoldBackgroundColor: AppColors.linen100,
+);
 
 void main() {
   testWidgets('Today grid — three cadences + virtue, swept sizes/text-scale',
       (tester) async {
-    stubGoogleFontsWithRoboto(tester);
 
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
@@ -60,9 +72,25 @@ void main() {
     await goldenAtSizes(
       tester,
       name: 'today',
-      theme: AppTheme.light,
+      theme: _theme,
       sizes: const {'phone': Size(360, 820), 'tablet': Size(768, 1024)},
       textScales: const [1.0, 2.0],
+      home: ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        child: const Scaffold(body: TodayScreen()),
+      ),
+    );
+  });
+
+  testWidgets('Today empty state renders the calm prompt (no habits)',
+      (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await goldenAtSizes(
+      tester,
+      name: 'today_empty',
+      theme: _theme,
+      sizes: const {'phone': Size(360, 740)},
       home: ProviderScope(
         overrides: [appDatabaseProvider.overrideWithValue(db)],
         child: const Scaffold(body: TodayScreen()),
