@@ -40,7 +40,6 @@ class FurrowRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Color(habit.colorValue);
-    final completedDays = completedDayKeys(habit, marks);
     final todayKey = today.toDateDay();
 
     return InkWell(
@@ -69,7 +68,7 @@ class FurrowRow extends StatelessWidget {
                     ? ValueKey('today_${habit.id}')
                     : null,
                 color: color,
-                filled: completedDays.contains(day.toDateDay()),
+                progress: dayProgress(habit, marks, day),
                 isToday: day.toDateDay() == todayKey,
                 isFuture: day.isAfter(today),
                 scheduled: isScheduledOn(habit, day),
@@ -88,7 +87,7 @@ class _DayCell extends StatelessWidget {
   const _DayCell({
     super.key,
     required this.color,
-    required this.filled,
+    required this.progress,
     required this.isToday,
     required this.isFuture,
     required this.scheduled,
@@ -97,7 +96,7 @@ class _DayCell extends StatelessWidget {
   });
 
   final Color color;
-  final bool filled;
+  final double progress; // 0..1 toward the day's target
   final bool isToday;
   final bool isFuture;
   final bool scheduled;
@@ -109,6 +108,14 @@ class _DayCell extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final emptyOutline = (dark ? AppColors.linen200 : AppColors.linen900)
         .withValues(alpha: isToday ? 0.45 : 0.16);
+    final fillColor = color.withValues(alpha: isFuture ? 0.25 : 1.0);
+    final filled = progress >= 1.0;
+    // Any nonzero progress shows a visible sliver rising from the bottom, so a
+    // single +1 or logged minute registers immediately instead of staying
+    // blank until the whole target lands.
+    final fillFactor = filled
+        ? 1.0
+        : (progress <= 0 ? 0.0 : progress.clamp(0.18, 0.92));
 
     return GestureDetector(
       onTap: onTap,
@@ -118,22 +125,41 @@ class _DayCell extends StatelessWidget {
         width: 26,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         alignment: Alignment.center,
-        child: AnimatedContainer(
-          // The ink-bloom: the fill grows in when the day flips complete.
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
-          width: filled ? 20 : 18,
-          height: filled ? 20 : 18,
-          decoration: BoxDecoration(
-            color: filled
-                ? color.withValues(alpha: isFuture ? 0.25 : 1.0)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border: filled
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: filled ? fillColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: filled
+                  ? null
+                  : Border.all(
+                      color: scheduled
+                          ? emptyOutline
+                          : emptyOutline.withValues(alpha: 0.5),
+                      width: isToday ? 1.6 : 1.0,
+                    ),
+            ),
+            child: filled
                 ? null
-                : Border.all(
-                    color: scheduled ? emptyOutline : emptyOutline.withValues(alpha: 0.5),
-                    width: isToday ? 1.6 : 1.0,
+                // The furrow filling: a partial bloom from the bottom up.
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: AnimatedFractionallySizedBox(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        widthFactor: 1,
+                        heightFactor: fillFactor,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: fillColor),
+                        ),
+                      ),
+                    ),
                   ),
           ),
         ),

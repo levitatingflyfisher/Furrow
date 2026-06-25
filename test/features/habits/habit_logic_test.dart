@@ -101,6 +101,40 @@ void main() {
     });
   });
 
+  group('dayProgress (partial-fill feedback on cells)', () {
+    test('binary is 0 or 1', () {
+      expect(dayProgress(_habit(), [_mark(day: day(0))], today), 1.0);
+      expect(dayProgress(_habit(), const [], today), 0.0);
+    });
+
+    test('count is the fraction of the daily target', () {
+      final h = _habit(cadence: Cadence.count, target: 8);
+      final marks = [_mark(day: day(0), value: 3, completed: false)];
+      expect(dayProgress(h, marks, today), closeTo(3 / 8, 1e-9));
+    });
+
+    test('count clamps over-target to 1', () {
+      final h = _habit(cadence: Cadence.count, target: 8);
+      final marks = [_mark(day: day(0), value: 10, completed: false)];
+      expect(dayProgress(h, marks, today), 1.0);
+    });
+
+    test("duration sums the day's sessions against the target", () {
+      final h = _habit(cadence: Cadence.duration, target: 1800); // 30 min
+      final marks = [
+        _mark(day: day(0), durationSecs: 600, completed: false),
+        _mark(day: day(0), durationSecs: 300, completed: false), // 900 / 1800
+      ];
+      expect(dayProgress(h, marks, today), closeTo(900 / 1800, 1e-9));
+    });
+
+    test('only counts marks on the asked-for day', () {
+      final h = _habit(cadence: Cadence.count, target: 4);
+      final marks = [_mark(day: day(1), value: 4)];
+      expect(dayProgress(h, marks, today), 0.0); // nothing logged today
+    });
+  });
+
   group('isScheduledOn', () {
     test('daily is always scheduled', () {
       expect(isScheduledOn(_habit(), today), isTrue);

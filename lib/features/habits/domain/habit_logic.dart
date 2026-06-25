@@ -31,6 +31,17 @@ int dayValue(Habit h, Iterable<HabitMark> dayMarks) {
 /// Whether [value] meets the habit's target (binary target is 1).
 bool isMet(Habit h, int value) => value >= h.targetValue;
 
+/// How far [day] has progressed toward the habit's target, in `[0, 1]`. This
+/// drives the cell's partial fill, so a single tap (a +1 count, a logged
+/// minute) is acknowledged immediately instead of staying blank until the
+/// whole target lands.
+double dayProgress(Habit h, List<HabitMark> marks, DateTime day) {
+  final key = day.toDateDay();
+  final value = dayValue(h, marks.where((m) => m.dateDay == key));
+  if (h.targetValue <= 0) return value > 0 ? 1.0 : 0.0;
+  return (value / h.targetValue).clamp(0.0, 1.0);
+}
+
 /// The set of `yyyy-MM-dd` day-keys on which the habit was completed, derived
 /// from all its marks (duration is summed per day against the target).
 Set<String> completedDayKeys(Habit h, List<HabitMark> marks) {
