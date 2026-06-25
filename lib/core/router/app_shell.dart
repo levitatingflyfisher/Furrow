@@ -98,21 +98,22 @@ class _AppShellState extends ConsumerState<AppShell> {
   AppBar _bar() => AppBar(
         title: const Text('Furrow'),
         centerTitle: false,
-        actions: const [
-          Padding(padding: EdgeInsets.only(right: 8), child: ThemePill()),
+        actions: [
+          // "Plant a habit" lives in the bar, not a floating button: an extended
+          // FAB floated over the bottom grid rows and intercepted taps meant for
+          // their day-cells (e.g. logging time on a lower habit).
+          IconButton(
+            icon: const Icon(LucideIcons.plus),
+            tooltip: 'Plant a habit',
+            onPressed: () => context.push('/habit/new'),
+          ),
+          const Padding(padding: EdgeInsets.only(right: 8), child: ThemePill()),
         ],
-      );
-
-  Widget _fab() => FloatingActionButton.extended(
-        onPressed: () => context.push('/habit/new'),
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('Habit'),
       );
 
   Widget _flow(BuildContext context) => Scaffold(
         appBar: _bar(),
         body: const TodayScreen(),
-        floatingActionButton: _fab(),
         bottomNavigationBar: const SafeArea(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
@@ -137,7 +138,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       appBar: _bar(),
       body: widget.child,
-      floatingActionButton: index == 0 ? _fab() : null,
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

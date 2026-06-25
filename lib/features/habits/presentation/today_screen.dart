@@ -82,30 +82,34 @@ class _Grid extends ConsumerWidget {
       }
     }
 
-    Future<void> tapToday(Habit h) async {
+    // Tap (today only): log today inline — toggle, +1, or the time sheet.
+    Future<void> tapDay(Habit h, DateTime day) async {
+      final key = day.toDateDay();
       switch (Cadence.fromName(h.cadence)) {
         case Cadence.binary:
-          final done = completedDayKeys(h, marksOf(h)).contains(todayKey);
-          await repo.setBinary(h, todayKey, !done);
+          final done = completedDayKeys(h, marksOf(h)).contains(key);
+          await repo.setBinary(h, key, !done);
           await checkAwards();
         case Cadence.count:
-          await repo.adjustCount(h, todayKey, 1);
+          await repo.adjustCount(h, key, 1);
           await checkAwards();
         case Cadence.duration:
-          // Log time right here — the sheet handles writing + award recheck.
           if (context.mounted) await showLogTimeSheet(context, h);
       }
     }
 
-    // Long-press is the "undo / step down" gesture for count; for binary it
-    // simply toggles, and for duration it opens the same log sheet.
-    Future<void> longPressToday(Habit h) async {
+    // Long-press: count "undo" (−1) and the time sheet are today-only; binary
+    // toggles ANY non-future day, so a forgotten tick on a past day is fixed
+    // inline without opening a screen.
+    Future<void> longPressDay(Habit h, DateTime day) async {
+      final key = day.toDateDay();
       switch (Cadence.fromName(h.cadence)) {
         case Cadence.count:
-          await repo.adjustCount(h, todayKey, -1);
+          await repo.adjustCount(h, key, -1);
+          await checkAwards();
         case Cadence.binary:
-          final done = completedDayKeys(h, marksOf(h)).contains(todayKey);
-          await repo.setBinary(h, todayKey, !done);
+          final done = completedDayKeys(h, marksOf(h)).contains(key);
+          await repo.setBinary(h, key, !done);
           await checkAwards();
         case Cadence.duration:
           if (context.mounted) await showLogTimeSheet(context, h);
@@ -114,7 +118,7 @@ class _Grid extends ConsumerWidget {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.md, AppSpacing.md, 96),
+          AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.lg),
       children: [
         if (virtueHabits.isNotEmpty) _VirtueBanner(now: today),
         // Weekday labels aligned over the seven cells.
@@ -169,8 +173,8 @@ class _Grid extends ConsumerWidget {
                     weekDays: weekDays,
                     marks: marksOf(habits[i]),
                     today: today,
-                    onTapToday: () => tapToday(habits[i]),
-                    onLongPressToday: () => longPressToday(habits[i]),
+                    onTapDay: (day) => tapDay(habits[i], day),
+                    onLongPressDay: (day) => longPressDay(habits[i], day),
                     onOpen: () => context.push('/habit/${habits[i].id}'),
                   ),
                 ],

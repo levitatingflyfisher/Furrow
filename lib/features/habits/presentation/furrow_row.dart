@@ -18,8 +18,8 @@ class FurrowRow extends StatelessWidget {
     required this.weekDays,
     required this.marks,
     required this.today,
-    required this.onTapToday,
-    required this.onLongPressToday,
+    required this.onTapDay,
+    required this.onLongPressDay,
     this.onOpen,
   });
 
@@ -27,8 +27,10 @@ class FurrowRow extends StatelessWidget {
   final List<DateTime> weekDays; // Mon..Sun
   final List<HabitMark> marks; // this habit's marks (any range)
   final DateTime today;
-  final VoidCallback onTapToday;
-  final VoidCallback onLongPressToday;
+  // Tap logs today; long-press also edits a PAST day inline (binary toggle) so
+  // a missed tick can be fixed without opening a screen.
+  final ValueChanged<DateTime> onTapDay;
+  final ValueChanged<DateTime> onLongPressDay;
   final VoidCallback? onOpen;
 
   IconData get _glyph => switch (Cadence.fromName(habit.cadence)) {
@@ -41,6 +43,7 @@ class FurrowRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(habit.colorValue);
     final todayKey = today.toDateDay();
+    final cadence = Cadence.fromName(habit.cadence);
 
     return InkWell(
       onTap: onOpen,
@@ -66,15 +69,20 @@ class FurrowRow extends StatelessWidget {
               _DayCell(
                 key: day.toDateDay() == todayKey
                     ? ValueKey('today_${habit.id}')
-                    : null,
+                    : ValueKey('day_${habit.id}_${day.toDateDay()}'),
                 color: color,
                 progress: dayProgress(habit, marks, day),
                 isToday: day.toDateDay() == todayKey,
                 isFuture: day.isAfter(today),
                 scheduled: isScheduledOn(habit, day),
-                onTap: day.toDateDay() == todayKey ? onTapToday : null,
-                onLongPress:
-                    day.toDateDay() == todayKey ? onLongPressToday : null,
+                // Tap: today only (log today).
+                onTap: day.toDateDay() == todayKey ? () => onTapDay(day) : null,
+                // Long-press: today (any cadence) OR a past binary day, so a
+                // forgotten tick can be fixed inline — no screen.
+                onLongPress: (day.toDateDay() == todayKey ||
+                        (cadence == Cadence.binary && !day.isAfter(today)))
+                    ? () => onLongPressDay(day)
+                    : null,
               ),
           ],
         ),
