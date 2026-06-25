@@ -59,3 +59,27 @@ PWA → gh-pages (manual; gate on `build/web/main.dart.js`; restore patched
 index.html with spinner + SW self-heal + `navigator.storage.persist()`). APK →
 `v*.*.*` tag triggers in-repo `release.yml` (split-per-abi). Landing card on
 `levitatingflyfisher.github.io` (PWA + sideload APK).
+
+## Post-launch input-flow fixes (2026-06-25)
+User feedback: logging some habits felt clunky / too many clicks/screens. Root
+causes found (systematic-debugging) and fixed:
+- **No sub-target feedback (the bigger half).** `_DayCell` filled only at FULL
+  target (`completedDayKeys` returns target-met days only), so a +1 of 8 or
+  +5 of 20 min left the cell blank — tapping looked like nothing happened. Fix:
+  new pure `dayProgress(h, marks, day)→[0,1]` drives a **partial bloom** that
+  rises from the bottom of the cell (min visible sliver ≥0.18), so every tap is
+  acknowledged at once. Affects count AND duration cells.
+- **Duration forced a screen hop + a live stopwatch.** Tapping a duration cell
+  pushed the whole Detail screen, then a button, then a stopwatch-only sheet,
+  and there was no way to log a KNOWN time after the fact. Fix: a single shared
+  `LogTimeSheet` (`showLogTimeSheet`) opens directly from the Today cell — quick
+  -add chips (+5/+15/+30, log in one tap, prominent), an exact stepper, and the
+  live stopwatch kept secondary (collapsed `ExpansionTile`). Same sheet reused
+  by Detail's "Log time" button (the old `_TimerSheet` was deleted — dedup).
+- **Count kept +1 tap / −1 long-press by deliberate choice** (the right
+  affordance for water-glasses); the partial fill now makes each +1 visible, so
+  the "did that register?" friction is gone without changing the input.
+- Tests-first (TDD): `dayProgress` unit cases + a deterministic widget test
+  (tap duration cell → +15 chip → assert a 900-s `HabitMark`) that dodges the
+  live-Timer teardown trap. Today goldens regenerated (Water 5/8 + Read 12/20
+  now show partial fills).
