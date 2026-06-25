@@ -9,6 +9,7 @@ import 'package:furrow/features/habits/data/habit_marks_dao.dart';
 import 'package:furrow/features/habits/data/habits_dao.dart';
 import 'package:furrow/features/habits/data/habits_repository.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
+import 'package:furrow/shared/extensions/datetime_ext.dart';
 
 // Plain theme (no google_fonts runtime fetch in headless tests).
 final _theme = ThemeData(
@@ -157,6 +158,60 @@ void main() {
         reason: '+15 must record 15 minutes');
 
     await tester.pump(const Duration(seconds: 6)); // drain any award timers
+    await db.close();
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  // Editing a prior entry should not require a screen: long-pressing a past
+  // binary day toggles that day inline. (On Mondays the week has no past day,
+  // so the target collapses to today's cell — still the long-press toggle path.)
+  testWidgets('long-pressing a past binary day records that day inline',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    final repo = HabitsRepository(HabitsDao(db), HabitMarksDao(db));
+    final id = await repo.createHabit(name: 'Read', cadence: Cadence.binary);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      child: MaterialApp(
+        theme: _theme,
+        home: const AppShell(child: SizedBox.shrink()),
+      ),
+    ));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // The displayed week is Mon..Sun; target its Monday (a past day unless today
+    // is Monday, in which case it's today's cell — both exercise the toggle).
+    final now = DateTime.now();
+    final todayD = DateTime(now.year, now.month, now.day);
+    final monday = todayD.subtract(Duration(days: todayD.weekday - 1));
+    final targetKey = monday.toDateDay();
+    final keyStr = targetKey == todayD.toDateDay()
+        ? 'today_$id'
+        : 'day_${id}_$targetKey';
+
+    await tester.longPress(find.byKey(ValueKey(keyStr)));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    final marks = await tester.runAsync(() => repo.allMarksOnce());
+    final hit = marks!.where(
+        (m) => m.habitId == id && m.dateDay == targetKey && m.completed);
+    expect(hit.length, 1,
+        reason: 'long-press must toggle the targeted day done, inline');
+
+    await tester.pump(const Duration(seconds: 6)); // drain award timers
     await db.close();
     await tester.pump(const Duration(seconds: 1));
   });

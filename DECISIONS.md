@@ -83,3 +83,20 @@ causes found (systematic-debugging) and fixed:
   (tap duration cell → +15 chip → assert a 900-s `HabitMark`) that dodges the
   live-Timer teardown trap. Today goldens regenerated (Water 5/8 + Read 12/20
   now show partial fills).
+
+## Post-launch round 2 (2026-06-25): FAB collision + inline past-edit
+- **"+Habit" moved from a FAB to an app-bar action.** The extended FAB floated
+  over the bottom grid rows and intercepted taps meant for their day-cells (the
+  user hit it while trying to log time on a lower habit). An app-bar "+" is
+  always reachable and never floats over content; the grid's bottom padding
+  dropped 96→`AppSpacing.lg` accordingly.
+- **Logging stays screen-free** (confirmed, not changed): tap = inline
+  (binary toggle / count +1 / duration → the `LogTimeSheet`, a modal *sheet*,
+  not a route). The detail screen is only for viewing stats.
+- **Editing a prior entry no longer needs a screen.** Long-press now toggles a
+  **past binary day** inline (cells carry `ValueKey('day_<id>_<yyyy-MM-dd>')`;
+  today keeps `today_<id>`). Count −1 / duration sheet stay today-only by
+  design; past count/duration edits still use the detail screen (deferred —
+  they'd need a day-parameterised sheet). TDD: a deterministic widget test
+  long-presses the week's Monday cell (a past day, or today on Mondays) and
+  asserts the toggle. 43 tests green.
