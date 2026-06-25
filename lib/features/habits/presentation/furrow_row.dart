@@ -65,6 +65,9 @@ class FurrowRow extends StatelessWidget {
             // Seven-day strip.
             for (final day in weekDays)
               _DayCell(
+                key: day.toDateDay() == todayKey
+                    ? ValueKey('today_${habit.id}')
+                    : null,
                 color: color,
                 filled: completedDays.contains(day.toDateDay()),
                 isToday: day.toDateDay() == todayKey,
@@ -83,6 +86,7 @@ class FurrowRow extends StatelessWidget {
 
 class _DayCell extends StatelessWidget {
   const _DayCell({
+    super.key,
     required this.color,
     required this.filled,
     required this.isToday,
