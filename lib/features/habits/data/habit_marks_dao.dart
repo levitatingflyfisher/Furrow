@@ -23,6 +23,8 @@ class HabitMarksDao extends DatabaseAccessor<AppDatabase>
   /// Every mark (Stats whole-field heatmap).
   Stream<List<HabitMark>> watchAll() => select(habitMarks).watch();
 
+  Future<List<HabitMark>> getAll() => select(habitMarks).get();
+
   /// The single binary/count row for a habit on a day, if any.
   Future<HabitMark?> dayMark(String habitId, String dateDay) =>
       (select(habitMarks)

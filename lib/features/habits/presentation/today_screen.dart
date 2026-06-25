@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/core/storage/app_database.dart';
+import 'package:furrow/features/habits/data/award_service.dart';
 import 'package:furrow/features/habits/domain/franklin_virtues.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/features/habits/domain/habit_logic.dart';
@@ -70,13 +71,25 @@ class _Grid extends ConsumerWidget {
     List<HabitMark> marksOf(Habit h) =>
         allMarks.where((m) => m.habitId == h.id).toList();
 
+    // After a mark is written, re-check awards and surface any newly earned
+    // for the shell's gentle confetti.
+    Future<void> checkAwards() async {
+      final earned =
+          await AwardService(repo, ref.read(awardsDaoProvider)).recheck();
+      if (earned.isNotEmpty) {
+        ref.read(newlyEarnedAwardsProvider.notifier).state = earned;
+      }
+    }
+
     Future<void> tapToday(Habit h) async {
       switch (Cadence.fromName(h.cadence)) {
         case Cadence.binary:
           final done = completedDayKeys(h, marksOf(h)).contains(todayKey);
           await repo.setBinary(h, todayKey, !done);
+          await checkAwards();
         case Cadence.count:
           await repo.adjustCount(h, todayKey, 1);
+          await checkAwards();
         case Cadence.duration:
           if (context.mounted) context.push('/habit/${h.id}');
       }
@@ -89,6 +102,7 @@ class _Grid extends ConsumerWidget {
         case Cadence.binary:
           final done = completedDayKeys(h, marksOf(h)).contains(todayKey);
           await repo.setBinary(h, todayKey, !done);
+          await checkAwards();
         case Cadence.duration:
           if (context.mounted) context.push('/habit/${h.id}');
       }

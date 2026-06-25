@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/core/storage/app_database.dart';
+import 'package:furrow/features/habits/data/award_service.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/features/habits/domain/habit_logic.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
@@ -227,6 +228,13 @@ class _TimerSheetState extends ConsumerState<_TimerSheet> {
             endMillis: now.millisecondsSinceEpoch,
             durationSecs: _elapsed,
           );
+      final earned = await AwardService(
+        ref.read(habitsRepositoryProvider),
+        ref.read(awardsDaoProvider),
+      ).recheck();
+      if (earned.isNotEmpty) {
+        ref.read(newlyEarnedAwardsProvider.notifier).state = earned;
+      }
     }
     if (mounted) Navigator.pop(context);
   }

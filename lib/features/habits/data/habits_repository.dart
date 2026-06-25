@@ -18,6 +18,8 @@ class HabitsRepository {
   // ── Habits ────────────────────────────────────────────────────────────────
   Stream<List<Habit>> watchActive() => _habits.watchActive();
   Stream<List<Habit>> watchAll() => _habits.watchAll();
+  Future<List<Habit>> activeHabitsOnce() => _habits.getActive();
+  Future<List<HabitMark>> allMarksOnce() => _marks.getAll();
   Stream<Habit?> watchHabit(String id) => _habits.watchById(id);
   Future<Habit?> getHabit(String id) => _habits.getById(id);
   Future<void> reorder(List<String> ids) => _habits.reorder(ids);
