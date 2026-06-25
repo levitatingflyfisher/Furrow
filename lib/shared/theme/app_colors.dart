@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Sage — Sundial primary
+  // Furrow — tilled-earth ochre (primary accent)
   static const furrow500 = Color(0xFFB07A2E);
   static const furrow600 = Color(0xFF8F6122);
   static const furrow700 = Color(0xFF6E4A19);

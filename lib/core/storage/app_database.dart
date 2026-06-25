@@ -6,30 +6,26 @@ part 'app_database.g.dart';
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
-class Profiles extends Table {
+/// A habit the household is cultivating. Three cadences share one table:
+/// `binary` (a daily tick), `count` (reach N per day), `duration` (log time).
+class Habits extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
-  TextColumn get emoji => text().nullable()();
-  IntColumn get colorValue => integer()();
+  TextColumn get cadence => text()(); // 'binary' | 'count' | 'duration'
+  TextColumn get scheduleType =>
+      text().withDefault(const Constant('daily'))(); // 'daily'|'specificDays'|'weeklyCount'
+  IntColumn get targetValue => integer().withDefault(const Constant(1))();
+  // binary=1; count=N (e.g. 8 glasses); duration=SECONDS (1800 = 30 min)
+  TextColumn get unit => text().nullable()(); // count label: 'glasses','pages'
+  IntColumn get weekdayMask =>
+      integer().withDefault(const Constant(127))(); // Mon=bit0..Sun=bit6; daily=127
+  IntColumn get weeklyTarget => integer().nullable()(); // weeklyCount (deferred UI)
+  TextColumn get icon => text().nullable()(); // icon key
+  IntColumn get colorValue =>
+      integer().withDefault(const Constant(0xFFB07A2E))(); // furrow500
+  TextColumn get virtueKey => text().nullable()(); // 'temperance'… null for user habits
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
-  IntColumn get createdAt => integer()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class Sessions extends Table {
-  TextColumn get id => text()();
-  IntColumn get startTime => integer()();
-  IntColumn get endTime => integer()();
-  IntColumn get durationSecs => integer()();
-  TextColumn get notes => text().nullable()();
-  TextColumn get dateDay => text()();
-  TextColumn get profileId => text().nullable().references(Profiles, #id)();
-  // Phase 3 columns — nullable, unused in Phase 1
-  TextColumn get locationLabel => text().nullable()();
-  RealColumn get lat => real().nullable()();
-  RealColumn get lng => real().nullable()();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -37,15 +33,43 @@ class Sessions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-class Badges extends Table {
+/// One mark against a habit. Surrogate id PK so duration habits can record many
+/// sessions per day; binary/count are upserted in app-logic keyed on
+/// (habitId, dateDay). `completed` is a snapshot for binary/count and derived
+/// (SUM(durationSecs) >= target) for duration.
+class HabitMarks extends Table {
   TextColumn get id => text()();
-  IntColumn get thresholdHours => integer()();
+  TextColumn get habitId => text().references(Habits, #id)();
+  TextColumn get dateDay => text()(); // 'yyyy-MM-dd' LOCAL
+  IntColumn get value => integer().withDefault(const Constant(0))();
+  // binary=0|1; count=running n; duration=seconds for this session
+  BoolColumn get completed => boolean().withDefault(const Constant(false))();
+  // duration-only session columns (nullable):
+  IntColumn get startTime => integer().nullable()();
+  IntColumn get endTime => integer().nullable()();
+  IntColumn get durationSecs => integer().nullable()();
+  TextColumn get notes => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Earned-once awards. `earnedAt` null = unearned; once set it is permanent
+/// (never revoked). `habitId` null = a global award.
+class HabitBadges extends Table {
+  TextColumn get id => text()(); // 'first_mark','chain_7'…
+  TextColumn get kind => text()(); // BadgeKind name
+  IntColumn get threshold => integer().withDefault(const Constant(0))();
+  TextColumn get habitId => text().nullable().references(Habits, #id)();
   IntColumn get earnedAt => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+/// Simple key→value store for preferences (theme, mode, virtue-seed flag, etc.).
 class UserPrefs extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -56,12 +80,12 @@ class UserPrefs extends Table {
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 
-@DriftDatabase(tables: [Profiles, Sessions, Badges, UserPrefs])
+@DriftDatabase(tables: [Habits, HabitMarks, HabitBadges, UserPrefs])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ??
             driftDatabase(
-              name: 'sundial',
+              name: 'furrow',
               // Web needs to know where the sqlite3 WASM engine + drift worker
               // live (both shipped in web/); without this drift_flutter throws
               // "the `web` parameter needs to be set" at startup.
@@ -72,51 +96,40 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      await m.createAll();
-      await _seedBadges();
-      await _seedDefaultProfile();
-    },
-    onUpgrade: (m, from, to) async {
-      if (from < 2) {
-        // Add the 25h, 75h, 250h, 750h milestone badges added in v2.
-        const newMilestones = [25, 75, 250, 750];
-        for (final h in newMilestones) {
-          await into(badges).insertOnConflictUpdate(
-            BadgesCompanion.insert(id: 'badge_${h}h', thresholdHours: h),
-          );
-        }
-      }
-      if (from < 3) {
-        // Add Profiles table and sessions.profileId column.
-        await m.createTable(profiles);
-        await m.addColumn(sessions, sessions.profileId);
-        await _seedDefaultProfile();
-      }
-    },
-  );
+        onCreate: (m) async {
+          await m.createAll();
+          await _seedAwards();
+          await customStatement(
+              'CREATE INDEX IF NOT EXISTS ix_marks_habit_day ON habit_marks(habit_id, date_day)');
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+        },
+      );
 
-  Future<void> _seedBadges() async {
-    const milestones = [10, 25, 50, 75, 100, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 1000];
-    for (final h in milestones) {
-      await into(badges).insert(
-        BadgesCompanion.insert(id: 'badge_${h}h', thresholdHours: h),
+  /// The six v1 awards, seeded unearned. Checks are hardcoded (no general
+  /// criterion engine in v1); see AwardService.
+  Future<void> _seedAwards() async {
+    const seeds = <(String, String, int)>[
+      ('first_mark', 'firstMark', 0),
+      ('chain_7', 'chainDays', 7),
+      ('chain_30', 'chainDays', 30),
+      ('clean_week', 'cleanWeek', 0),
+      ('count_target_7', 'countTarget', 7),
+      ('duration_25h', 'durationTotal', 90000), // 25h in seconds
+    ];
+    for (final (id, kind, threshold) in seeds) {
+      await into(habitBadges).insert(
+        HabitBadgesCompanion.insert(
+          id: id,
+          kind: kind,
+          threshold: Value(threshold),
+        ),
       );
     }
-  }
-
-  Future<void> _seedDefaultProfile() async {
-    await into(profiles).insertOnConflictUpdate(
-      ProfilesCompanion.insert(
-        id: 'default',
-        name: 'Me',
-        colorValue: 0xFF5E9478, // sage green
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-      ),
-    );
   }
 }

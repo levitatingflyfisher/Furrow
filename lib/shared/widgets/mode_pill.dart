@@ -22,7 +22,7 @@ class ModePill extends ConsumerWidget {
       if (target == AppMode.rich) {
         ref.read(settingsRepositoryProvider).setAppMode(AppMode.rich);
         ref.read(widgetLaunchOverrideProvider.notifier).state = false;
-        context.go('/timer');
+        context.go('/today');
       } else {
         ref.read(settingsRepositoryProvider).setAppMode(AppMode.flow);
       }

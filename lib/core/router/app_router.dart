@@ -5,136 +5,92 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/core/router/app_shell.dart';
+import 'package:furrow/features/habits/presentation/garden_screen.dart';
+import 'package:furrow/features/habits/presentation/habit_detail_screen.dart';
+import 'package:furrow/features/habits/presentation/habit_edit_sheet.dart';
+import 'package:furrow/features/habits/presentation/today_screen.dart';
 import 'package:furrow/features/onboarding/presentation/onboarding_screen.dart';
-import 'package:furrow/features/sessions/presentation/history_screen.dart';
-import 'package:furrow/features/sessions/presentation/manual_entry_sheet.dart';
-import 'package:furrow/features/sessions/presentation/session_edit_sheet.dart';
-import 'package:furrow/features/export/presentation/export_screen.dart';
-import 'package:furrow/features/profiles/presentation/profiles_screen.dart';
 import 'package:furrow/features/settings/presentation/settings_screen.dart';
 import 'package:furrow/features/stats/presentation/stats_screen.dart';
-import 'package:furrow/features/timer/presentation/timer_screen.dart';
 
 part 'app_router.g.dart';
 
-CustomTransitionPage<T> _fadePage<T>({
-  required LocalKey key,
-  required Widget child,
-  Duration duration = const Duration(milliseconds: 400),
-}) =>
-    CustomTransitionPage<T>(
-      key: key,
-      child: child,
-      transitionDuration: duration,
-      transitionsBuilder: (_, animation, __, child) => FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: child,
-      ),
-    );
-
-CustomTransitionPage<T> _slideUpPage<T>({
-  required LocalKey key,
-  required Widget child,
-}) =>
+CustomTransitionPage<T> _fade<T>({required LocalKey key, required Widget child}) =>
     CustomTransitionPage<T>(
       key: key,
       child: child,
       transitionDuration: const Duration(milliseconds: 350),
-      transitionsBuilder: (_, animation, __, child) => SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 1),
-          end: Offset.zero,
-        ).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-        child: child,
+      transitionsBuilder: (_, a, __, c) =>
+          FadeTransition(opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: c),
+    );
+
+CustomTransitionPage<T> _slideUp<T>(
+        {required LocalKey key, required Widget child}) =>
+    CustomTransitionPage<T>(
+      key: key,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 320),
+      transitionsBuilder: (_, a, __, c) => SlideTransition(
+        position: Tween(begin: const Offset(0, 1), end: Offset.zero)
+            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        child: c,
       ),
     );
 
 @riverpod
 GoRouter appRouter(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
-
   return GoRouter(
-    initialLocation: '/timer',
+    initialLocation: '/today',
     redirect: (context, state) async {
       if (state.matchedLocation == '/onboarding') return null;
-      final rawPrefs = await db.select(db.userPrefs).get();
-      if (rawPrefs.isEmpty) return '/onboarding';
+      final prefs = await db.select(db.userPrefs).get();
+      if (prefs.isEmpty) return '/onboarding';
       return null;
     },
     routes: [
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (context, state) => _fadePage(
-          key: state.pageKey,
-          child: const OnboardingScreen(),
-          duration: const Duration(milliseconds: 500),
-        ),
+        pageBuilder: (c, s) =>
+            _fade(key: s.pageKey, child: const OnboardingScreen()),
       ),
       ShellRoute(
-        builder: (context, state, child) => AppShell(child: child),
+        builder: (c, s, child) => AppShell(child: child),
         routes: [
           GoRoute(
-            path: '/timer',
-            pageBuilder: (context, state) => _fadePage(
-              key: state.pageKey,
-              child: const TimerScreen(),
-            ),
-          ),
+              path: '/today',
+              pageBuilder: (c, s) =>
+                  _fade(key: s.pageKey, child: const TodayScreen())),
           GoRoute(
-            path: '/history',
-            pageBuilder: (context, state) => _fadePage(
-              key: state.pageKey,
-              child: const HistoryScreen(),
-            ),
-          ),
+              path: '/garden',
+              pageBuilder: (c, s) =>
+                  _fade(key: s.pageKey, child: const GardenScreen())),
           GoRoute(
-            path: '/stats',
-            pageBuilder: (context, state) => _fadePage(
-              key: state.pageKey,
-              child: const StatsScreen(),
-            ),
-          ),
+              path: '/stats',
+              pageBuilder: (c, s) =>
+                  _fade(key: s.pageKey, child: const StatsScreen())),
           GoRoute(
-            path: '/settings',
-            pageBuilder: (context, state) => _fadePage(
-              key: state.pageKey,
-              child: const SettingsScreen(),
-            ),
-          ),
+              path: '/settings',
+              pageBuilder: (c, s) =>
+                  _fade(key: s.pageKey, child: const SettingsScreen())),
         ],
       ),
       GoRoute(
-        path: '/settings/profiles',
-        pageBuilder: (context, state) => _slideUpPage(
-          key: state.pageKey,
-          child: const ProfilesScreen(),
-        ),
+        path: '/habit/new',
+        pageBuilder: (c, s) =>
+            _slideUp(key: s.pageKey, child: const HabitEditSheet()),
       ),
       GoRoute(
-        path: '/export',
-        pageBuilder: (context, state) => _slideUpPage(
-          key: state.pageKey,
-          child: const ExportScreen(),
-        ),
+        path: '/habit/:id',
+        pageBuilder: (c, s) => _slideUp(
+            key: s.pageKey,
+            child: HabitDetailScreen(habitId: s.pathParameters['id']!)),
       ),
       GoRoute(
-        path: '/sessions/add',
-        pageBuilder: (context, state) => _slideUpPage(
-          key: state.pageKey,
-          child: ManualEntrySheet(initialDate: state.extra as DateTime?),
-        ),
-      ),
-      GoRoute(
-        path: '/sessions/:id/edit',
-        pageBuilder: (context, state) {
-          final id = state.pathParameters['id']!;
-          final session = state.extra;
-          return _slideUpPage(
-            key: state.pageKey,
-            child: SessionEditSheet(sessionId: id, initialSession: session),
-          );
-        },
+        path: '/habit/:id/edit',
+        pageBuilder: (c, s) => _slideUp(
+            key: s.pageKey,
+            child: HabitEditSheet(habitId: s.pathParameters['id']!)),
       ),
     ],
   );

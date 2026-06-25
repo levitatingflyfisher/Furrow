@@ -5,12 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:furrow/core/providers/core_providers.dart';
-import 'package:furrow/features/flow_mode/presentation/flow_screen.dart';
+import 'package:furrow/features/habits/domain/awards.dart';
+import 'package:furrow/features/habits/presentation/today_screen.dart';
 import 'package:furrow/features/settings/domain/user_prefs.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/widgets/mode_pill.dart';
 import 'package:furrow/shared/widgets/theme_pill.dart';
 
+/// Owns the app chrome. Flow mode (default) shows only the Today grid for a
+/// calm single surface; Rich mode adds a four-tab nav. The gentle confetti +
+/// quiet fact line fire when an award is earned.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child});
   final Widget child;
@@ -25,7 +29,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
-    _confetti = ConfettiController(duration: const Duration(seconds: 3));
+    _confetti = ConfettiController(duration: const Duration(seconds: 2));
   }
 
   @override
@@ -36,107 +40,94 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    // Heal stale active-profile selections. If the saved profile ID no longer
-    // exists (deleted elsewhere, bad restore, etc.) fall back to Everyone so
-    // the rest of the UI doesn't silently filter to an empty set.
-    ref.listen(profilesListProvider, (_, next) {
-      final profiles = next.valueOrNull;
-      if (profiles == null) return;
-      final activeId = ref.read(activeProfileIdProvider);
-      if (activeId == kEveryoneProfileId) return;
-      if (profiles.any((p) => p.id == activeId)) return;
-      ref.read(activeProfileIdProvider.notifier).select(kEveryoneProfileId);
-    });
-
-    ref.listen(newlyEarnedBadgesProvider, (_, badges) {
-      if (badges.isEmpty) return;
+    ref.listen(newlyEarnedAwardsProvider, (_, awards) {
+      if (awards.isEmpty) return;
       _confetti.play();
-      final topBadge = badges.first;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${topBadge.thresholdHours}h milestone — '
-            '${topBadge.thresholdHours} hours outside this year',
-          ),
-          duration: const Duration(seconds: 4),
+      final fact = kAwardById[awards.first.id]?.fact ?? 'A mark made.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(fact, style: Theme.of(context).textTheme.titleMedium),
           behavior: SnackBarBehavior.floating,
-        ),
-      );
+          duration: const Duration(seconds: 4),
+        ));
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
-          ref.read(newlyEarnedBadgesProvider.notifier).state = const [];
+          ref.read(newlyEarnedAwardsProvider.notifier).state = const [];
         }
       });
     });
 
-    // Widget-tap launches force Flow mode until the next pause — a
-    // transient glance shouldn't land users inside the tabbed Rich shell,
-    // regardless of their durable preference.
     final widgetOverride = ref.watch(widgetLaunchOverrideProvider);
-    final modeAsync = ref.watch(appModeProvider);
-    final content = widgetOverride
-        ? const FlowScreen()
-        : modeAsync.when(
-            data: (mode) => mode == AppMode.flow
-                ? const FlowScreen()
-                : _RichShell(child: widget.child),
-            loading: () => const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, __) => const FlowScreen(),
-          );
+    final mode = widgetOverride
+        ? AppMode.flow
+        : (ref.watch(appModeProvider).valueOrNull ?? AppMode.flow);
 
     return Stack(
+      alignment: Alignment.topCenter,
       children: [
-        content,
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConfettiWidget(
-            confettiController: _confetti,
-            blastDirectionality: BlastDirectionality.explosive,
-            shouldLoop: false,
-            colors: const [
-              AppColors.furrow500,
-              AppColors.furrow600,
-              AppColors.sunGold,
-              AppColors.linen200,
-              Colors.white,
-            ],
-          ),
+        mode == AppMode.flow ? _flow(context) : _rich(context),
+        // Gentle confetti: few particles, slow drift, furrow/gold/linen only.
+        ConfettiWidget(
+          confettiController: _confetti,
+          blastDirectionality: BlastDirectionality.explosive,
+          shouldLoop: false,
+          numberOfParticles: 14,
+          maxBlastForce: 9,
+          minBlastForce: 4,
+          emissionFrequency: 0.04,
+          gravity: 0.12,
+          minimumSize: const Size(6, 6),
+          maximumSize: const Size(11, 11),
+          colors: const [
+            AppColors.furrow500,
+            AppColors.furrow700,
+            AppColors.sunGold,
+            AppColors.linen200,
+          ],
         ),
       ],
     );
   }
-}
 
-class _RichShell extends StatelessWidget {
-  const _RichShell({required this.child});
-  final Widget child;
+  AppBar _bar() => AppBar(
+        title: const Text('Furrow'),
+        centerTitle: false,
+        actions: const [
+          Padding(padding: EdgeInsets.only(right: 8), child: ThemePill()),
+        ],
+      );
 
-  int _selectedIndex(BuildContext context) {
+  Widget _fab() => FloatingActionButton.extended(
+        onPressed: () => context.push('/habit/new'),
+        icon: const Icon(LucideIcons.plus),
+        label: const Text('Habit'),
+      );
+
+  Widget _flow(BuildContext context) => Scaffold(
+        appBar: _bar(),
+        body: const TodayScreen(),
+        floatingActionButton: _fab(),
+        bottomNavigationBar: const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: ModePill()),
+          ),
+        ),
+      );
+
+  Widget _rich(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    return switch (location) {
-      '/history' => 1,
+    final index = switch (location) {
+      '/garden' => 1,
       '/stats' => 2,
       '/settings' => 3,
       _ => 0,
     };
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sundial'),
-        centerTitle: false,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: ThemePill(),
-          ),
-        ],
-      ),
-      body: child,
+      appBar: _bar(),
+      body: widget.child,
+      floatingActionButton: index == 0 ? _fab() : null,
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -145,28 +136,18 @@ class _RichShell extends StatelessWidget {
             child: ModePill(),
           ),
           NavigationBar(
-            selectedIndex: _selectedIndex(context),
-            onDestinationSelected: (i) {
-              const routes = ['/timer', '/history', '/stats', '/settings'];
-              context.go(routes[i]);
-            },
+            selectedIndex: index,
+            onDestinationSelected: (i) => context.go(
+                const ['/today', '/garden', '/stats', '/settings'][i]),
             destinations: const [
               NavigationDestination(
-                icon: Icon(LucideIcons.timer),
-                label: 'Timer',
-              ),
+                  icon: Icon(LucideIcons.layoutGrid), label: 'Today'),
               NavigationDestination(
-                icon: Icon(LucideIcons.history),
-                label: 'History',
-              ),
+                  icon: Icon(LucideIcons.sprout), label: 'Garden'),
               NavigationDestination(
-                icon: Icon(LucideIcons.barChart2),
-                label: 'Stats',
-              ),
+                  icon: Icon(LucideIcons.barChart2), label: 'Stats'),
               NavigationDestination(
-                icon: Icon(LucideIcons.settings),
-                label: 'Settings',
-              ),
+                  icon: Icon(LucideIcons.settings), label: 'Settings'),
             ],
           ),
         ],

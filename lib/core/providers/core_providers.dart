@@ -1,31 +1,22 @@
 // lib/core/providers/core_providers.dart
-import 'package:flutter/material.dart' hide Badge;
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:furrow/core/auth/auth_repository.dart';
 import 'package:furrow/core/auth/ghost_auth_repository.dart';
 import 'package:furrow/core/storage/app_database.dart' hide UserPrefs;
-import 'package:furrow/features/badges/data/badges_dao.dart';
-import 'package:furrow/features/badges/data/local_badges_repository.dart';
-import 'package:furrow/features/badges/domain/badges_repository.dart';
-import 'package:furrow/features/profiles/data/local_profiles_repository.dart';
-import 'package:furrow/features/profiles/data/profiles_dao.dart';
-import 'package:furrow/features/profiles/domain/profiles_repository.dart';
-import 'package:furrow/features/sessions/data/local_sessions_repository.dart';
-import 'package:furrow/features/sessions/data/sessions_dao.dart';
-import 'package:furrow/features/sessions/domain/sessions_repository.dart';
+import 'package:furrow/features/habits/data/awards_dao.dart';
+import 'package:furrow/features/habits/data/habit_marks_dao.dart';
+import 'package:furrow/features/habits/data/habits_dao.dart';
+import 'package:furrow/features/habits/data/habits_repository.dart';
 import 'package:furrow/features/settings/data/local_settings_repository.dart';
 import 'package:furrow/features/settings/domain/settings_repository.dart';
 import 'package:furrow/features/settings/domain/user_prefs.dart';
 
 part 'core_providers.g.dart';
 
-/// Sentinel profile ID meaning "all profiles simultaneously".
-/// When the timer stops with this ID, one session per profile is saved.
-const kEveryoneProfileId = 'everyone';
-
-// Seeded from main() before ProviderScope
+// Seeded from main() before ProviderScope.
 final sharedPreferencesProvider =
     Provider<SharedPreferences>((ref) => throw UnimplementedError());
 
@@ -37,44 +28,39 @@ AppDatabase appDatabase(AppDatabaseRef ref) {
 }
 
 @riverpod
-SessionsRepository sessionsRepository(SessionsRepositoryRef ref) {
+HabitsRepository habitsRepository(HabitsRepositoryRef ref) {
   final db = ref.watch(appDatabaseProvider);
-  return LocalSessionsRepository(SessionsDao(db));
+  return HabitsRepository(HabitsDao(db), HabitMarksDao(db));
 }
 
 @riverpod
-BadgesRepository badgesRepository(BadgesRepositoryRef ref) {
-  final db = ref.watch(appDatabaseProvider);
-  return LocalBadgesRepository(BadgesDao(db), SessionsDao(db));
-}
+AwardsDao awardsDao(AwardsDaoRef ref) =>
+    AwardsDao(ref.watch(appDatabaseProvider));
 
+/// Active (non-archived) habits in display order — the Today grid + Garden.
 @riverpod
-ProfilesRepository profilesRepository(ProfilesRepositoryRef ref) {
-  final db = ref.watch(appDatabaseProvider);
-  return LocalProfilesRepository(ProfilesDao(db), SessionsDao(db));
-}
+Stream<List<Habit>> activeHabits(ActiveHabitsRef ref) =>
+    ref.watch(habitsRepositoryProvider).watchActive();
 
+/// All marks recorded on a given `yyyy-MM-dd` (the Today grid cells).
 @riverpod
-Stream<List<Profile>> profilesList(ProfilesListRef ref) =>
-    ref.watch(profilesRepositoryProvider).watchAll();
+Stream<List<HabitMark>> marksForDay(MarksForDayRef ref, String dateDay) =>
+    ref.watch(habitsRepositoryProvider).watchMarksForDay(dateDay);
 
-/// The currently selected profile ID. Persisted in SharedPreferences.
-/// Defaults to [kEveryoneProfileId] on fresh installs; existing installs
-/// read their saved value (typically 'default').
-class ActiveProfileNotifier extends StateNotifier<String> {
-  ActiveProfileNotifier(this._prefs) : super(_prefs.getString('active_profile_id') ?? kEveryoneProfileId);
-  final SharedPreferences _prefs;
+/// All marks for one habit (Habit Detail heatmap + history).
+@riverpod
+Stream<List<HabitMark>> marksForHabit(MarksForHabitRef ref, String habitId) =>
+    ref.watch(habitsRepositoryProvider).watchMarksForHabit(habitId);
 
-  void select(String profileId) {
-    state = profileId;
-    _prefs.setString('active_profile_id', profileId);
-  }
-}
+/// Every mark (Stats whole-field heatmap + consistency counts).
+@riverpod
+Stream<List<HabitMark>> allMarks(AllMarksRef ref) =>
+    ref.watch(habitsRepositoryProvider).watchAllMarks();
 
-final activeProfileIdProvider =
-    StateNotifierProvider<ActiveProfileNotifier, String>((ref) {
-  return ActiveProfileNotifier(ref.read(sharedPreferencesProvider));
-});
+/// All awards (earned + unearned) for the badge shelf.
+@riverpod
+Stream<List<HabitBadge>> awards(AwardsRef ref) =>
+    ref.watch(awardsDaoProvider).watchAll();
 
 @riverpod
 SettingsRepository settingsRepository(SettingsRepositoryRef ref) {
@@ -103,15 +89,13 @@ ThemeMode themeMode(ThemeModeRef ref) {
   );
 }
 
-/// Badges earned in the most recent confirmSession call.
-/// Set by TimerNotifier, consumed + cleared by AppShell.
-final newlyEarnedBadgesProvider = StateProvider<List<Badge>>((ref) => const []);
+/// Awards earned by the most recent mark write. Set by the habits controller,
+/// consumed + cleared by AppShell to trigger the gentle confetti.
+final newlyEarnedAwardsProvider =
+    StateProvider<List<HabitBadge>>((ref) => const []);
 
-/// Transient flag: when true, AppShell forces FlowScreen regardless of the
-/// user's durable [AppMode] preference. Set via the `launchSource=widget`
-/// MethodChannel path wired up in main.dart. Cleared on
-/// [AppLifecycleState.paused] by the [widgetLaunchLifecycleObserverProvider]
-/// and by ModePill's Rich tap, so the user can exit Flow mode.
+/// Transient flag: when true, AppShell forces Flow mode regardless of the
+/// durable [AppMode] preference (set via the widget launch MethodChannel path).
 final widgetLaunchOverrideProvider = StateProvider<bool>((ref) => false);
 
 class _WidgetLaunchLifecycleObserver with WidgetsBindingObserver {
@@ -126,10 +110,6 @@ class _WidgetLaunchLifecycleObserver with WidgetsBindingObserver {
   }
 }
 
-/// Reading this provider as a side-effect attaches a lifecycle observer that
-/// clears [widgetLaunchOverrideProvider] on app pause. Read it once from
-/// main.dart after the first frame so the override never outlives a single
-/// foreground session.
 final widgetLaunchLifecycleObserverProvider = Provider<WidgetsBindingObserver>(
   (ref) {
     final observer = _WidgetLaunchLifecycleObserver(ref);
