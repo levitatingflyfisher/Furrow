@@ -33,7 +33,9 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Run tests
-        run: flutter test test/
+        # Exclude golden tests: pixel goldens are environment-specific (font
+        # rasterisation differs on CI runners) and are for local visual review.
+        run: flutter test test/ --exclude-tags golden
 
   build-and-release:
     name: Build & Release
