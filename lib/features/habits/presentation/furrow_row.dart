@@ -45,47 +45,66 @@ class FurrowRow extends StatelessWidget {
     final todayKey = today.toDateDay();
     final cadence = Cadence.fromName(habit.cadence);
 
-    return InkWell(
-      onTap: onOpen,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.sm + 2, horizontal: AppSpacing.sm),
-        child: Row(
-          children: [
-            Icon(_glyph, size: 18, color: color.withValues(alpha: 0.85)),
-            const SizedBox(width: AppSpacing.sm + 2),
-            Expanded(
-              child: Text(
-                habit.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+    // Two lines: the NAME line navigates, the CELL line logs. Splitting them
+    // gives every day cell a full column of thumb width (>=40dp at 320dp)
+    // and makes a near-miss log a log instead of a navigation.
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.xs, horizontal: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: onOpen,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.xs, horizontal: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(_glyph, size: 18, color: color.withValues(alpha: 0.85)),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      habit.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            // Seven-day strip.
-            for (final day in weekDays)
-              _DayCell(
-                key: day.toDateDay() == todayKey
-                    ? ValueKey('today_${habit.id}')
-                    : ValueKey('day_${habit.id}_${day.toDateDay()}'),
-                color: color,
-                progress: dayProgress(habit, marks, day),
-                isToday: day.toDateDay() == todayKey,
-                isFuture: day.isAfter(today),
-                scheduled: isScheduledOn(habit, day),
-                // Tap: today only (log today).
-                onTap: day.toDateDay() == todayKey ? () => onTapDay(day) : null,
-                // Long-press: today (any cadence) OR a past binary day, so a
-                // forgotten tick can be fixed inline — no screen.
-                onLongPress: (day.toDateDay() == todayKey ||
-                        (cadence == Cadence.binary && !day.isAfter(today)))
-                    ? () => onLongPressDay(day)
-                    : null,
-              ),
-          ],
-        ),
+          ),
+          Row(
+            children: [
+              for (final day in weekDays)
+                Expanded(
+                  child: _DayCell(
+                    key: day.toDateDay() == todayKey
+                        ? ValueKey('today_${habit.id}')
+                        : ValueKey('day_${habit.id}_${day.toDateDay()}'),
+                    color: color,
+                    progress: dayProgress(habit, marks, day),
+                    isToday: day.toDateDay() == todayKey,
+                    isFuture: day.isAfter(today),
+                    scheduled: isScheduledOn(habit, day),
+                    // Tap: today only (log today).
+                    onTap: day.toDateDay() == todayKey
+                        ? () => onTapDay(day)
+                        : null,
+                    // Long-press: today (any cadence) OR a past binary day,
+                    // so a forgotten tick can be fixed inline — no screen.
+                    onLongPress: (day.toDateDay() == todayKey ||
+                            (cadence == Cadence.binary &&
+                                !day.isAfter(today)))
+                        ? () => onLongPressDay(day)
+                        : null,
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -130,12 +149,12 @@ class _DayCell extends StatelessWidget {
       onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 26,
+        height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         alignment: Alignment.center,
         child: SizedBox(
-          width: 20,
-          height: 20,
+          width: 24,
+          height: 24,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,

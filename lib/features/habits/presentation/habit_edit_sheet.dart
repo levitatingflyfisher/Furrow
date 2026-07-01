@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
 
-const _habitSwatches = <int>[
-  0xFFB07A2E, // furrow ochre
-  0xFF5E9478, // sage
-  0xFF5C7599, // slate
-  0xFFA85040, // terracotta
-  0xFFC49A3C, // amber
+// Canonical OhColors values referenced by token; Furrow-only hues (the
+// signature ochre included) stay literal. Same ints either way.
+final _habitSwatches = <int>[
+  0xFFB07A2E, // furrow ochre (Furrow's signature — app-local)
+  OhColors.sage500.toARGB32(), // sage
+  OhColors.slate500.toARGB32(), // slate
+  OhColors.hearth500.toARGB32(), // terracotta
+  OhColors.amber400.toARGB32(), // amber
   0xFF7A6C9C, // muted violet
   0xFF4E7D65, // pine
   0xFF8C6A58, // walnut
@@ -144,7 +147,7 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
             onSubmitted: (_) => _save(),
           ),
           const SizedBox(height: AppSpacing.lg),
-          _SectionLabel('How is it done?'),
+          const _SectionLabel('How is it done?'),
           const SizedBox(height: AppSpacing.sm),
           if (_editing)
             _CadenceCard(cadence: _cadence, selected: true, onTap: () {})
@@ -186,7 +189,7 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          _SectionLabel('When?'),
+          const _SectionLabel('When?'),
           const SizedBox(height: AppSpacing.sm),
           SegmentedButton<ScheduleType>(
             segments: const [
@@ -205,7 +208,7 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          _SectionLabel('Colour'),
+          const _SectionLabel('Colour'),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,

@@ -83,6 +83,47 @@ void main() {
     });
   });
 
+  group('DST safety (calendar-day walking)', () {
+    // 2026-03-08 02:00 is the US spring-forward. Under a DST timezone
+    // (run e.g. with TZ=America/Denver) the old Duration(days: 1) cursor
+    // walk landed on 23:00 of two days back and skipped 2026-03-08
+    // entirely — 167 elapsed hours truncating to 6 days. These must hold
+    // in EVERY timezone.
+    final mondayAfter = DateTime(2026, 3, 9);
+
+    test('a streak walk across a spring-forward boundary stays unbroken', () {
+      final marks = [
+        _mark(day: '2026-03-06'),
+        _mark(day: '2026-03-07'),
+        _mark(day: '2026-03-08'), // the transition day itself
+        _mark(day: '2026-03-09'),
+      ];
+      expect(currentStreak(_habit(), marks, mondayAfter), 4);
+    });
+
+    test('a real gap on the transition day still breaks the streak', () {
+      // The old walk skipped 03-08 and read 03-07 as "yesterday",
+      // wrongly bridging the gap to 2.
+      final marks = [
+        _mark(day: '2026-03-07'),
+        _mark(day: '2026-03-09'),
+      ];
+      expect(currentStreak(_habit(), marks, mondayAfter), 1);
+    });
+
+    test('bestStreak counts a run spanning the transition', () {
+      // Old form: parse-to-local-midnight difference across the
+      // transition is 23h → inDays == 0 → the run wrongly reset.
+      final marks = [
+        _mark(day: '2026-03-06'),
+        _mark(day: '2026-03-07'),
+        _mark(day: '2026-03-08'),
+        _mark(day: '2026-03-09'),
+      ];
+      expect(bestStreak(_habit(), marks), 4);
+    });
+  });
+
   group('duration completion is derived per day from summed seconds', () {
     test('two sessions summing past target complete the day', () {
       final h = _habit(cadence: Cadence.duration, target: 1800); // 30 min

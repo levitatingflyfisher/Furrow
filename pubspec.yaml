@@ -1,10 +1,12 @@
 name: furrow
 description: Local-first daily-virtue & habit tracker — OpenHearth.
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  # Floor raised to satisfy sanctuary_auth_core / sanctuary_backup_ui's
+  # `environment: sdk` (>=3.10.7) — SANCTUARY-BRIEF §4.W2.
+  sdk: '>=3.10.7 <4.0.0'
 
 dependencies:
   flutter:
@@ -17,25 +19,35 @@ dependencies:
   go_router: ^14.2.7
   fpdart: ^1.1.0
   uuid: ^4.4.2
-  intl: ^0.19.0
+  intl: ^0.20.2
+  # Pinnable time source (StillLife's golden root-fix): screens read
+  # clock.now() so tests can freeze "today" with withClock.
+  clock: ^1.1.1
   shared_preferences: ^2.3.2
   path_provider: ^2.1.4
   path: ^1.9.0
   confetti: ^0.7.0
-  pdf: ^3.10.8
-  printing: ^5.13.1
-  share_plus: ^10.0.3
-  google_fonts: ^6.2.1
   lucide_flutter: ^1.7.0
+  # Shared OpenHearth design tokens (sibling path dep, eloEngine convention).
+  # Tier-T adoption: canonical color tokens + the byte-identical Material
+  # text ladder only — zero visual change by construction.
+  openhearth_design:
+    path: ../ohStyle/openhearth_design
   file_picker: ^8.1.0
   home_widget: ^0.7.0
+  # Sibling path deps (eloEngine convention, SANCTUARY-BRIEF §3): the
+  # encrypted-backup crypto core + the app-agnostic backup UI/controller.
+  sanctuary_auth_core:
+    path: ../packages/sanctuary_auth_core
+  sanctuary_backup_ui:
+    path: ../packages/sanctuary_backup_ui
 
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#F5F0E8"
+  adaptive_icon_background: "#6E4A19"
   adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 dev_dependencies:
@@ -51,9 +63,33 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_goldens:
     sdk: flutter
+  # Fleet standards as tests that can fail (sibling path dep):
+  # style tokens, backup spec, size budgets, permission surface, harness.
+  oh_fleet_conformance:
+    path: ../packages/oh_fleet_conformance
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/icon/
+
+  fonts:
+    - family: Lora
+      fonts:
+        - asset: assets/fonts/Lora-Regular.ttf
+        - asset: assets/fonts/Lora-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Lora-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Lora-Bold.ttf
+          weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700

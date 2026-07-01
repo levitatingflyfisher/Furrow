@@ -1,4 +1,5 @@
 // lib/features/habits/presentation/log_time_sheet.dart
+import 'package:clock/clock.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,7 +50,7 @@ class _LogTimeSheetState extends ConsumerState<LogTimeSheet> {
 
   Future<void> _loadToday() async {
     final marks = await ref.read(habitsRepositoryProvider).allMarksOnce();
-    final key = DateTime.now().toDateDay();
+    final key = clock.now().toDateDay();
     final secs = marks
         .where((m) => m.habitId == widget.habit.id && m.dateDay == key)
         .fold<int>(0, (s, m) => s + (m.durationSecs ?? 0));
@@ -64,7 +65,7 @@ class _LogTimeSheetState extends ConsumerState<LogTimeSheet> {
 
   Future<void> _log(int seconds) async {
     if (seconds <= 0) return;
-    final now = DateTime.now();
+    final now = clock.now();
     final repo = ref.read(habitsRepositoryProvider);
     await repo.addDurationSession(
       widget.habit,

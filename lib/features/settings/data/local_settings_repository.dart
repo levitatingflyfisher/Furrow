@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:furrow/core/storage/app_database.dart' hide UserPrefs;
 import 'package:furrow/features/settings/domain/settings_repository.dart';
 import 'package:furrow/features/settings/domain/user_prefs.dart';
@@ -9,7 +8,6 @@ class LocalSettingsRepository implements SettingsRepository {
 
   static const _kAnnualGoal = 'annual_goal_hours';
   static const _kMonthlyGoal = 'monthly_goal_hours';
-  static const _kAppMode = 'app_mode';
   static const _kTimerStyle = 'flow_timer_style';
   static const _kAutoStopEnabled = 'auto_stop_enabled';
   static const _kAutoStopHours = 'auto_stop_threshold_hours';
@@ -20,11 +18,6 @@ class LocalSettingsRepository implements SettingsRepository {
   Future<void> _set(String key, String value) => _db
       .into(_db.userPrefs)
       .insertOnConflictUpdate(UserPrefsCompanion.insert(key: key, value: value));
-
-  Stream<String?> _watch(String key) =>
-      (_db.select(_db.userPrefs)..where((t) => t.key.equals(key)))
-          .watchSingleOrNull()
-          .map((r) => r?.value);
 
   @override
   Future<UserPrefs> getUserPrefs() async {
@@ -39,14 +32,6 @@ class LocalSettingsRepository implements SettingsRepository {
         final map = {for (final r in rows) r.key: r.value};
         return _fromMap(map);
       });
-
-  @override
-  Stream<AppMode> watchAppMode() =>
-      _watch(_kAppMode).map((v) => _parseMode(v));
-
-  @override
-  Future<void> setAppMode(AppMode mode) =>
-      _set(_kAppMode, mode == AppMode.flow ? 'flow' : 'rich');
 
   @override
   Future<void> setAnnualGoalHours(int hours) =>
@@ -88,7 +73,6 @@ class LocalSettingsRepository implements SettingsRepository {
   UserPrefs _fromMap(Map<String, String> map) => UserPrefs(
     annualGoalHours: int.tryParse(map[_kAnnualGoal] ?? '') ?? 1000,
     monthlyGoalHours: int.tryParse(map[_kMonthlyGoal] ?? ''),
-    appMode: _parseMode(map[_kAppMode]),
     flowTimerStyle: _parseStyle(map[_kTimerStyle]),
     autoStopEnabled: map[_kAutoStopEnabled] == 'true',
     autoStopThresholdHours: int.tryParse(map[_kAutoStopHours] ?? '') ?? 2,
@@ -96,8 +80,6 @@ class LocalSettingsRepository implements SettingsRepository {
     timeFormat: map[_kTimeFormat] == '24h' ? TimeFormat.h24 : TimeFormat.h12,
     weekStart: map[_kWeekStart] == 'monday' ? WeekStart.monday : WeekStart.sunday,
   );
-
-  AppMode _parseMode(String? v) => v == 'rich' ? AppMode.rich : AppMode.flow;
 
   FlowTimerStyle _parseStyle(String? v) => switch (v) {
     'arc' => FlowTimerStyle.arc,

@@ -21,11 +21,6 @@ void main() {
       expect(prefs.annualGoalHours, 1000);
     });
 
-    test('appMode defaults to flow', () async {
-      final prefs = await repo.getUserPrefs();
-      expect(prefs.appMode, AppMode.flow);
-    });
-
     test('flowTimerStyle defaults to gnomon', () async {
       final prefs = await repo.getUserPrefs();
       expect(prefs.flowTimerStyle, FlowTimerStyle.gnomon);
@@ -35,18 +30,6 @@ void main() {
       await repo.setAnnualGoalHours(500);
       final prefs = await repo.getUserPrefs();
       expect(prefs.annualGoalHours, 500);
-    });
-
-    test('setAppMode persists value', () async {
-      await repo.setAppMode(AppMode.rich);
-      final prefs = await repo.getUserPrefs();
-      expect(prefs.appMode, AppMode.rich);
-    });
-
-    test('watchAppMode streams changes', () async {
-      expect(await repo.watchAppMode().first, AppMode.flow);
-      await repo.setAppMode(AppMode.rich);
-      expect(await repo.watchAppMode().first, AppMode.rich);
     });
   });
 }

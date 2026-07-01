@@ -1,4 +1,5 @@
 // lib/features/habits/data/habits_dao.dart
+import 'package:clock/clock.dart';
 import 'package:drift/drift.dart';
 import 'package:furrow/core/storage/app_database.dart';
 
@@ -11,6 +12,12 @@ class HabitsDao extends DatabaseAccessor<AppDatabase> with _$HabitsDaoMixin {
   /// Active (non-archived) habits, in display order.
   Stream<List<Habit>> watchActive() => (select(habits)
         ..where((t) => t.archived.equals(false))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
+      .watch();
+
+  /// Resting (archived) habits — the Settings recovery list.
+  Stream<List<Habit>> watchArchived() => (select(habits)
+        ..where((t) => t.archived.equals(true))
         ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
       .watch();
 
@@ -36,7 +43,7 @@ class HabitsDao extends DatabaseAccessor<AppDatabase> with _$HabitsDaoMixin {
       (update(habits)..where((t) => t.id.equals(id))).write(
         HabitsCompanion(
           archived: Value(archived),
-          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+          updatedAt: Value(clock.now().millisecondsSinceEpoch),
         ),
       );
 

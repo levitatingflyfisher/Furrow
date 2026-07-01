@@ -64,15 +64,19 @@ Set<String> completedDayKeys(Habit h, List<HabitMark> marks) {
 int currentStreak(Habit h, List<HabitMark> marks, DateTime today) {
   final done = completedDayKeys(h, marks);
   if (done.isEmpty) return 0;
+  // Walk the calendar, not elapsed time: DateTime(y, m, d - 1) always lands
+  // on the previous calendar day, where subtract(Duration(days: 1)) is 24
+  // elapsed hours and lands on 23:00 two days back across a DST
+  // spring-forward — skipping the transition day's key entirely.
   var cursor = DateTime(today.year, today.month, today.day);
   // Today not yet done? The streak may still be alive up to yesterday.
   if (!done.contains(cursor.toDateDay())) {
-    cursor = cursor.subtract(const Duration(days: 1));
+    cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
   }
   var streak = 0;
   while (done.contains(cursor.toDateDay())) {
     streak++;
-    cursor = cursor.subtract(const Duration(days: 1));
+    cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
   }
   return streak;
 }
@@ -86,7 +90,10 @@ int bestStreak(Habit h, List<HabitMark> marks) {
   for (var i = 1; i < keys.length; i++) {
     final prev = parse(keys[i - 1]);
     final cur = parse(keys[i]);
-    if (cur.difference(prev).inDays == 1) {
+    // daysBetweenDates, not difference().inDays: the latter reads the 23
+    // elapsed hours across a DST spring-forward as 0 days and wrongly
+    // resets the run.
+    if (daysBetweenDates(prev, cur) == 1) {
       run++;
     } else {
       run = 1;

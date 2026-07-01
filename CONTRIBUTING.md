@@ -1,6 +1,6 @@
-# Contributing to Sundial
+# Contributing to Furrow
 
-Thank you for taking the time to contribute! This document explains how to report issues, suggest features, and submit code changes.
+Thank you for taking the time to contribute! This document explains how to report issues, suggest features, and submit code changes. Before working in the code, read [AGENTS.md](AGENTS.md) and the [architecture overview](docs/architecture/OVERVIEW.md).
 
 ---
 
@@ -26,12 +26,12 @@ Open an issue with the `enhancement` label. Describe the problem you are trying 
 ## Development Setup
 
 ```bash
-git clone <repo-url>
-cd sundial
+git clone git@github.com:levitatingflyfisher/Furrow.git
+cd Furrow
 flutter pub get
 ```
 
-Sundial uses Drift ORM and Riverpod codegen. Generated `*.g.dart` files are gitignored, so you must run code generation after every fresh checkout or dependency change:
+Furrow uses Drift ORM and Riverpod codegen. Generated `*.g.dart` files are gitignored, so you must run code generation after every fresh checkout or dependency change:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
@@ -69,21 +69,21 @@ The project uses `package:flutter_lints` with standard rules — no overrides. D
 
 - Every new feature must include tests.
 - Bug fixes should include a regression test where feasible.
-- Tests live in `test/` and mirror the `lib/` structure:
-  - `test/unit/` — domain entities, repositories, services
-  - `test/widget/` — presentation layer widgets and screens
+- Tests live in `test/` and mirror the `lib/` structure — e.g. `test/features/habits/`, `test/shared/`, `test/core/`, and golden tests under `test/visual/`.
+- Pure domain logic (streaks, awards, progress) gets a plain unit test; the signature Today grid is pinned by golden tests.
 - Repository tests use an in-memory SQLite database (no mocking needed thanks to Drift's `NativeDatabase.memory()`).
+- Golden tests are environment-sensitive and excluded from CI; regenerate them with `flutter test --update-goldens test/visual/` when you deliberately change the UI.
 
 ---
 
 ## Pull Request Workflow
 
-1. Fork the repository and create a feature branch from `main`:
+1. Fork the repository and create a feature branch from `master`:
    ```bash
    git checkout -b feat/my-feature
    ```
 2. Make your changes, following the code style rules above.
-3. Open a PR against the `main` branch with a clear description of what changed and why.
+3. Open a PR against the `master` branch with a clear description of what changed and why.
 4. Link any related issues in the PR description (`Closes #123`).
 
 PRs that fail `flutter analyze` or `flutter test` will not be merged.
@@ -92,20 +92,22 @@ PRs that fail `flutter analyze` or `flutter test` will not be merged.
 
 ## Architecture Notes
 
-Sundial uses clean architecture with a feature-based folder layout. When adding a new feature:
+Furrow uses clean architecture with a feature-based folder layout. When adding a new feature:
 
 1. Create a directory under `lib/features/<feature-name>/` with three sub-directories:
-   - `domain/` — define entity classes and an abstract repository interface
+   - `domain/` — entity classes, pure logic (no DB, no widgets), and an abstract repository interface
    - `data/` — implement the repository using a Drift DAO
    - `presentation/` — screens, widgets, and Riverpod controllers/providers
 
-2. Add database tables to `lib/services/database/tables.dart` and a new DAO under `lib/services/database/daos/`.
+2. Add database tables to `lib/core/storage/app_database.dart` and a DAO under the feature's `data/` directory. If you change an existing table, bump `schemaVersion` and add a migration (v1 is a clean `onCreate`).
 
-3. Run `dart run build_runner build --delete-conflicting-outputs` to regenerate Drift code.
+3. Run `dart run build_runner build --delete-conflicting-outputs` to regenerate Drift + Riverpod code.
 
-4. Register the new repository provider in `lib/core/providers/repository_providers.dart`.
+4. Register providers (e.g. in `lib/core/providers/core_providers.dart`).
 
-5. Add routes in `lib/app/router.dart`.
+5. Add routes in `lib/core/router/app_router.dart`.
+
+See the [architecture overview](docs/architecture/OVERVIEW.md) for the module map and diagrams.
 
 ---
 

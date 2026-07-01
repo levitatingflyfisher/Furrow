@@ -1,4 +1,5 @@
 // lib/features/habits/presentation/habit_detail_screen.dart
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,7 +42,7 @@ class _Detail extends ConsumerWidget {
     final marksAsync = ref.watch(marksForHabitProvider(habit.id));
     final cadence = Cadence.fromName(habit.cadence);
     final color = Color(habit.colorValue);
-    final today = DateTime.now();
+    final today = clock.now();
 
     Future<void> confirmDelete() async {
       final ok = await showDialog<bool>(
@@ -65,6 +66,39 @@ class _Detail extends ConsumerWidget {
       }
     }
 
+    // Full CRUD, no dead ends: archive parks a habit without touching
+    // history, clear-history gives a fresh start without re-planting, and
+    // delete stays the one destructive act behind its confirm.
+    Future<void> confirmClearHistory() async {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Clear ${habit.name}\'s history?'),
+          content: const Text(
+              'Every mark is removed; the habit stays planted. A fresh '
+              'furrow, same field.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Clear history')),
+          ],
+        ),
+      );
+      if (ok == true) {
+        await ref.read(habitsRepositoryProvider).clearMarks(habit.id);
+      }
+    }
+
+    Future<void> toggleArchived() async {
+      await ref
+          .read(habitsRepositoryProvider)
+          .setArchived(habit.id, !habit.archived);
+      if (context.mounted) context.pop();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(habit.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -73,9 +107,25 @@ class _Detail extends ConsumerWidget {
             icon: const Icon(LucideIcons.pencil),
             onPressed: () => context.push('/habit/${habit.id}/edit'),
           ),
-          IconButton(
-            icon: const Icon(LucideIcons.trash2),
-            onPressed: confirmDelete,
+          PopupMenuButton<String>(
+            icon: const Icon(LucideIcons.ellipsisVertical),
+            onSelected: (value) => switch (value) {
+              'archive' => toggleArchived(),
+              'clear' => confirmClearHistory(),
+              'delete' => confirmDelete(),
+              _ => Future<void>.value(),
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'archive',
+                child: Text(habit.archived
+                    ? 'Return to the field'
+                    : 'Rest this habit'),
+              ),
+              const PopupMenuItem(
+                  value: 'clear', child: Text('Clear history')),
+              const PopupMenuItem(value: 'delete', child: Text('Remove')),
+            ],
           ),
         ],
       ),
@@ -114,7 +164,13 @@ class _Detail extends ConsumerWidget {
                 Text('No marks yet.',
                     style: Theme.of(context).textTheme.bodyMedium)
               else
-                ...marks.take(30).map((m) => _MarkTile(habit: habit, mark: m)),
+                ...marks.take(30).map((m) => _MarkTile(
+                      habit: habit,
+                      mark: m,
+                      onDelete: () => ref
+                          .read(habitsRepositoryProvider)
+                          .deleteMark(m.id),
+                    )),
             ],
           );
         },
@@ -156,13 +212,15 @@ class _StatCard extends StatelessWidget {
 }
 
 class _MarkTile extends StatelessWidget {
-  const _MarkTile({required this.habit, required this.mark});
+  const _MarkTile(
+      {required this.habit, required this.mark, required this.onDelete});
   final Habit habit;
   final HabitMark mark;
+  final VoidCallback onDelete;
   @override
   Widget build(BuildContext context) {
     final cadence = Cadence.fromName(habit.cadence);
-    final trailing = switch (cadence) {
+    final label = switch (cadence) {
       Cadence.binary => mark.completed ? 'done' : '—',
       Cadence.count => '${mark.value}${habit.unit != null ? ' ${habit.unit}' : ''}',
       Cadence.duration =>
@@ -176,7 +234,18 @@ class _MarkTile extends StatelessWidget {
         color: Color(habit.colorValue),
       ),
       title: Text(mark.dateDay),
-      trailing: Text(trailing),
+      // A fat-fingered mark is no longer forever: every entry can go.
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          IconButton(
+            icon: const Icon(LucideIcons.x, size: 16),
+            tooltip: 'Remove this mark',
+            onPressed: onDelete,
+          ),
+        ],
+      ),
     );
   }
 }

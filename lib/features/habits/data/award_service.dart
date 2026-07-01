@@ -1,4 +1,5 @@
 // lib/features/habits/data/award_service.dart
+import 'package:clock/clock.dart';
 import 'package:furrow/core/storage/app_database.dart';
 import 'package:furrow/features/habits/data/awards_dao.dart';
 import 'package:furrow/features/habits/data/habits_repository.dart';
@@ -14,7 +15,8 @@ class AwardService {
   final HabitsRepository _repo;
   final AwardsDao _awards;
 
-  Future<List<HabitBadge>> recheck() async {
+  /// [now] is injectable for tests; production callers omit it.
+  Future<List<HabitBadge>> recheck({DateTime? now}) async {
     final unearned =
         (await _awards.getAll()).where((a) => a.earnedAt == null).toList();
     if (unearned.isEmpty) return const [];
@@ -23,12 +25,12 @@ class AwardService {
     final marks = await _repo.allMarksOnce();
     List<HabitMark> marksOf(Habit h) =>
         marks.where((m) => m.habitId == h.id).toList();
-    final today = DateTime.now();
+    final today = now ?? clock.now();
 
     final newly = <HabitBadge>[];
     for (final a in unearned) {
       if (_met(a, habits, marksOf, today)) {
-        await _awards.earn(a.id, DateTime.now().millisecondsSinceEpoch);
+        await _awards.earn(a.id, clock.now().millisecondsSinceEpoch);
         newly.add(a);
       }
     }
@@ -65,22 +67,29 @@ class AwardService {
   bool _cleanWeek(List<Habit> habits,
       List<HabitMark> Function(Habit) marksOf, DateTime today) {
     if (habits.isEmpty) return false;
-    final thisMonday = today.subtract(Duration(days: today.weekday - 1));
+    // Calendar arithmetic (DateTime(y, m, d ± n)), never Duration math:
+    // walking weeks back from a just-after-midnight `now` with
+    // Duration(days: 7 * w) slides to 23:xx of the previous day across a
+    // DST transition and scans the wrong Mon..Sun window.
+    final thisMonday = today.startOfWeek;
     for (var w = 1; w <= 8; w++) {
-      final monday = thisMonday.subtract(Duration(days: 7 * w));
-      final weekEnd = monday.add(const Duration(days: 6));
+      final monday =
+          DateTime(thisMonday.year, thisMonday.month, thisMonday.day - 7 * w);
       var allMet = true;
       var anyScheduled = false;
       for (final h in habits) {
-        // Skip a habit that didn't exist for the whole week.
-        if (DateTime.fromMillisecondsSinceEpoch(h.createdAt).isAfter(monday)) {
+        // Skip a habit that didn't exist for the whole week. Compare
+        // date-only: `monday` is midnight, so an instant-level isAfter would
+        // disqualify a habit created ON that Monday (e.g. at 14:00) forever.
+        final createdDay =
+            DateTime.fromMillisecondsSinceEpoch(h.createdAt).dateOnly;
+        if (createdDay.isAfter(monday)) {
           allMet = false;
           break;
         }
         final done = completedDayKeys(h, marksOf(h));
         for (var d = 0; d < 7; d++) {
-          final day = monday.add(Duration(days: d));
-          if (day.isAfter(weekEnd)) break;
+          final day = DateTime(monday.year, monday.month, monday.day + d);
           if (!isScheduledOn(h, day)) continue;
           anyScheduled = true;
           if (!done.contains(day.toDateDay())) {

@@ -1,4 +1,5 @@
 // lib/features/habits/data/habit_marks_dao.dart
+import 'package:clock/clock.dart';
 import 'package:drift/drift.dart';
 import 'package:furrow/core/storage/app_database.dart';
 
@@ -38,7 +39,7 @@ class HabitMarksDao extends DatabaseAccessor<AppDatabase>
         HabitMarksCompanion(
           value: Value(value),
           completed: Value(completed),
-          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+          updatedAt: Value(clock.now().millisecondsSinceEpoch),
         ),
       );
 

@@ -1,4 +1,5 @@
 /// Domain enums for habits. Stored in the DB as their `.name` string.
+library;
 
 /// How a habit is satisfied on a given day.
 enum Cadence {

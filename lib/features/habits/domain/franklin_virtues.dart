@@ -1,3 +1,5 @@
+import 'package:furrow/shared/extensions/datetime_ext.dart';
+
 /// Benjamin Franklin's thirteen virtues, in his own canonical order (never
 /// alphabetical), with his precepts. Used as an optional seed set and for the
 /// "virtue of the week" rotation. Precepts are runtime-overridable via the
@@ -39,8 +41,27 @@ const List<Virtue> kFranklinVirtues = [
 
 /// The virtue Franklin focused on for a given week, derived from a Monday
 /// anchor date independent of any habit rows: `virtues[weeksSinceAnchor % 13]`.
+/// Calendar days via the DST-safe [daysBetweenDates] — the naive
+/// `difference().inDays` loses the spring-forward hour and flips the week
+/// boundary a day late.
 Virtue virtueOfWeek(DateTime anchorMonday, DateTime now) {
-  final weeks = now.difference(anchorMonday).inDays ~/ 7;
+  final weeks = daysBetweenDates(anchorMonday, now) ~/ 7;
   final idx = ((weeks % 13) + 13) % 13; // guard negatives
   return kFranklinVirtues[idx];
+}
+
+/// The week's FOCUS virtue: the household's override when one is set for
+/// this week, else the rotation. An unknown override key falls back to the
+/// rotation — a renamed/removed virtue must never crash the home surface.
+Virtue focusVirtueForWeek({
+  required DateTime anchorMonday,
+  required DateTime now,
+  String? overrideKey,
+}) {
+  if (overrideKey != null) {
+    for (final v in kFranklinVirtues) {
+      if (v.key == overrideKey) return v;
+    }
+  }
+  return virtueOfWeek(anchorMonday, now);
 }

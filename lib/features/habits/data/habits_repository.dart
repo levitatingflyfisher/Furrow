@@ -1,4 +1,5 @@
 // lib/features/habits/data/habits_repository.dart
+import 'package:clock/clock.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'package:furrow/core/storage/app_database.dart';
@@ -17,6 +18,7 @@ class HabitsRepository {
 
   // ── Habits ────────────────────────────────────────────────────────────────
   Stream<List<Habit>> watchActive() => _habits.watchActive();
+  Stream<List<Habit>> watchArchived() => _habits.watchArchived();
   Stream<List<Habit>> watchAll() => _habits.watchAll();
   Future<List<Habit>> activeHabitsOnce() => _habits.getActive();
   Future<List<HabitMark>> allMarksOnce() => _marks.getAll();
@@ -36,7 +38,7 @@ class HabitsRepository {
     int colorValue = 0xFFB07A2E,
     String? virtueKey,
   }) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = clock.now().millisecondsSinceEpoch;
     final id = _uuid.v4();
     final order = await _habits.nextSortOrder();
     await _habits.upsert(HabitsCompanion.insert(
@@ -81,7 +83,7 @@ class HabitsRepository {
       archived: Value(h.archived),
       sortOrder: Value(h.sortOrder),
       createdAt: Value(h.createdAt),
-      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      updatedAt: Value(clock.now().millisecondsSinceEpoch),
     ));
   }
 
@@ -97,7 +99,7 @@ class HabitsRepository {
     final existing = await _habits.getActive();
     final present = existing.map((h) => h.virtueKey).whereType<String>().toSet();
     var order = await _habits.nextSortOrder();
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = clock.now().millisecondsSinceEpoch;
     for (final v in kFranklinVirtues) {
       if (present.contains(v.key)) continue;
       await _habits.upsert(HabitsCompanion.insert(
@@ -123,45 +125,56 @@ class HabitsRepository {
 
   /// Binary: set done/undone for the day (one row upserted).
   Future<void> setBinary(Habit h, String dateDay, bool done) async {
-    final existing = await _marks.dayMark(h.id, dateDay);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (existing == null) {
-      await _marks.insert(HabitMarksCompanion.insert(
-        id: _uuid.v4(),
-        habitId: h.id,
-        dateDay: dateDay,
-        value: Value(done ? 1 : 0),
-        completed: Value(done),
-        createdAt: now,
-        updatedAt: now,
-      ));
-    } else {
-      await _marks.updateValue(existing.id, done ? 1 : 0, done);
-    }
+    // Serialize the read-modify-write so two quick taps can't both insert a
+    // fresh row for the same (habit, day) — see adjustCount.
+    await _marks.transaction(() async {
+      final existing = await _marks.dayMark(h.id, dateDay);
+      final now = clock.now().millisecondsSinceEpoch;
+      if (existing == null) {
+        await _marks.insert(HabitMarksCompanion.insert(
+          id: _uuid.v4(),
+          habitId: h.id,
+          dateDay: dateDay,
+          value: Value(done ? 1 : 0),
+          completed: Value(done),
+          createdAt: now,
+          updatedAt: now,
+        ));
+      } else {
+        await _marks.updateValue(existing.id, done ? 1 : 0, done);
+      }
+    });
   }
 
   /// Count: change the day's running value by [delta], clamped to [0, ∞).
   /// Returns the new value. Completion is value >= target.
   Future<int> adjustCount(Habit h, String dateDay, int delta) async {
-    final existing = await _marks.dayMark(h.id, dateDay);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final current = existing?.value ?? 0;
-    final next = (current + delta).clamp(0, 1 << 30);
-    final done = next >= h.targetValue;
-    if (existing == null) {
-      await _marks.insert(HabitMarksCompanion.insert(
-        id: _uuid.v4(),
-        habitId: h.id,
-        dateDay: dateDay,
-        value: Value(next),
-        completed: Value(done),
-        createdAt: now,
-        updatedAt: now,
-      ));
-    } else {
-      await _marks.updateValue(existing.id, next, done);
-    }
-    return next;
+    // Serialize the read-modify-write: two rapid taps fire concurrently
+    // (fire-and-forget onTap), and without a transaction both read "no row yet"
+    // and insert, duplicating (habitId, dateDay) — after which dayMark throws
+    // and the cell's writes silently die. A transaction makes the second tap
+    // wait and see the first's row.
+    return _marks.transaction(() async {
+      final existing = await _marks.dayMark(h.id, dateDay);
+      final now = clock.now().millisecondsSinceEpoch;
+      final current = existing?.value ?? 0;
+      final next = (current + delta).clamp(0, 1 << 30);
+      final done = next >= h.targetValue;
+      if (existing == null) {
+        await _marks.insert(HabitMarksCompanion.insert(
+          id: _uuid.v4(),
+          habitId: h.id,
+          dateDay: dateDay,
+          value: Value(next),
+          completed: Value(done),
+          createdAt: now,
+          updatedAt: now,
+        ));
+      } else {
+        await _marks.updateValue(existing.id, next, done);
+      }
+      return next;
+    });
   }
 
   /// Duration: append a logged session (many-per-day). Day completion is
@@ -174,7 +187,7 @@ class HabitsRepository {
     required int durationSecs,
     String? notes,
   }) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = clock.now().millisecondsSinceEpoch;
     await _marks.insert(HabitMarksCompanion.insert(
       id: _uuid.v4(),
       habitId: h.id,
@@ -191,4 +204,9 @@ class HabitsRepository {
   }
 
   Future<void> deleteMark(String id) => _marks.deleteById(id);
+
+  /// Clear a habit's whole history, keeping the habit. The "reset" the
+  /// detail screen offers — forgiveness over prevention applies to data
+  /// too: a fresh start should never require deleting and re-planting.
+  Future<void> clearMarks(String habitId) => _marks.deleteForHabit(habitId);
 }

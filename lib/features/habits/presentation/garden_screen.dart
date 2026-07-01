@@ -1,4 +1,5 @@
 // lib/features/habits/presentation/garden_screen.dart
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +16,7 @@ class GardenScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final habitsAsync = ref.watch(activeHabitsProvider);
     final marksAsync = ref.watch(allMarksProvider);
-    final today = DateTime.now();
+    final today = clock.now();
 
     return habitsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),

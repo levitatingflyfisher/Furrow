@@ -60,4 +60,16 @@ Future<void> goldenAtSizes(
       );
     }
   }
+
+  // Drift schedules a zero-duration Timer when a query stream loses its last
+  // listener (StreamQueryStore.markAsClosed), which happens when riverpod's
+  // StreamProviders dispose as the tree unmounts. Left to the framework's
+  // END-of-test unmount, that timer is created after the last pump and every
+  // otherwise-green golden test dies with "A Timer is still pending" (then
+  // wedges the runner shutting down). Unmount here and pump once so the
+  // timer fires inside the test body instead. The pump needs an explicit
+  // duration: only an elapsing pump fires due timers on the test's fake
+  // clock (a plain pump() just flushes microtasks).
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(milliseconds: 1));
 }

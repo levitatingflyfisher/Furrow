@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/features/settings/domain/user_prefs.dart';
@@ -24,18 +25,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     switch (t) {
       case _Template.three:
         await repo.createHabit(
-            name: 'Move', cadence: Cadence.binary, colorValue: 0xFF5E9478);
+            name: 'Move',
+            cadence: Cadence.binary,
+            colorValue: OhColors.sage500.toARGB32());
         await repo.createHabit(
             name: 'Read',
             cadence: Cadence.duration,
             targetValue: 20 * 60,
-            colorValue: 0xFFB07A2E);
+            colorValue: 0xFFB07A2E); // furrow ochre (signature, app-local)
         await repo.createHabit(
             name: 'Water',
             cadence: Cadence.count,
             targetValue: 8,
             unit: 'glasses',
-            colorValue: 0xFF5C7599);
+            colorValue: OhColors.slate500.toARGB32());
       case _Template.franklin:
         await repo.seedFranklinVirtues();
       case _Template.blank:
@@ -43,7 +46,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
     // Writing any pref row marks the app as onboarded (router redirect checks
     // for an empty UserPrefs table).
-    await ref.read(settingsRepositoryProvider).setAppMode(AppMode.flow);
+    await ref.read(settingsRepositoryProvider).setWeekStart(WeekStart.sunday);
     if (mounted) context.go('/today');
   }
 

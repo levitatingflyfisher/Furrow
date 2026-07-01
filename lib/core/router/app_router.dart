@@ -8,6 +8,7 @@ import 'package:furrow/core/router/app_shell.dart';
 import 'package:furrow/features/habits/presentation/garden_screen.dart';
 import 'package:furrow/features/habits/presentation/habit_detail_screen.dart';
 import 'package:furrow/features/habits/presentation/habit_edit_sheet.dart';
+import 'package:furrow/features/habits/presentation/review_screen.dart';
 import 'package:furrow/features/habits/presentation/today_screen.dart';
 import 'package:furrow/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:furrow/features/settings/presentation/settings_screen.dart';
@@ -74,6 +75,11 @@ GoRouter appRouter(Ref ref) {
               pageBuilder: (c, s) =>
                   _fade(key: s.pageKey, child: const SettingsScreen())),
         ],
+      ),
+      GoRoute(
+        path: '/review',
+        pageBuilder: (c, s) =>
+            _slideUp(key: s.pageKey, child: const ReviewScreen()),
       ),
       GoRoute(
         path: '/habit/new',

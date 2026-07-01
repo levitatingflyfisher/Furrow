@@ -21,66 +21,67 @@ final sharedPreferencesProvider =
     Provider<SharedPreferences>((ref) => throw UnimplementedError());
 
 @riverpod
-AppDatabase appDatabase(AppDatabaseRef ref) {
+AppDatabase appDatabase(Ref ref) {
   final db = AppDatabase();
   ref.onDispose(db.close);
   return db;
 }
 
 @riverpod
-HabitsRepository habitsRepository(HabitsRepositoryRef ref) {
+HabitsRepository habitsRepository(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
   return HabitsRepository(HabitsDao(db), HabitMarksDao(db));
 }
 
 @riverpod
-AwardsDao awardsDao(AwardsDaoRef ref) =>
+AwardsDao awardsDao(Ref ref) =>
     AwardsDao(ref.watch(appDatabaseProvider));
 
 /// Active (non-archived) habits in display order — the Today grid + Garden.
 @riverpod
-Stream<List<Habit>> activeHabits(ActiveHabitsRef ref) =>
+Stream<List<Habit>> activeHabits(Ref ref) =>
     ref.watch(habitsRepositoryProvider).watchActive();
+
+/// Resting (archived) habits — Settings' way back to the field.
+@riverpod
+Stream<List<Habit>> restingHabits(Ref ref) =>
+    ref.watch(habitsRepositoryProvider).watchArchived();
 
 /// All marks recorded on a given `yyyy-MM-dd` (the Today grid cells).
 @riverpod
-Stream<List<HabitMark>> marksForDay(MarksForDayRef ref, String dateDay) =>
+Stream<List<HabitMark>> marksForDay(Ref ref, String dateDay) =>
     ref.watch(habitsRepositoryProvider).watchMarksForDay(dateDay);
 
 /// All marks for one habit (Habit Detail heatmap + history).
 @riverpod
-Stream<List<HabitMark>> marksForHabit(MarksForHabitRef ref, String habitId) =>
+Stream<List<HabitMark>> marksForHabit(Ref ref, String habitId) =>
     ref.watch(habitsRepositoryProvider).watchMarksForHabit(habitId);
 
 /// Every mark (Stats whole-field heatmap + consistency counts).
 @riverpod
-Stream<List<HabitMark>> allMarks(AllMarksRef ref) =>
+Stream<List<HabitMark>> allMarks(Ref ref) =>
     ref.watch(habitsRepositoryProvider).watchAllMarks();
 
 /// All awards (earned + unearned) for the badge shelf.
 @riverpod
-Stream<List<HabitBadge>> awards(AwardsRef ref) =>
+Stream<List<HabitBadge>> awards(Ref ref) =>
     ref.watch(awardsDaoProvider).watchAll();
 
 @riverpod
-SettingsRepository settingsRepository(SettingsRepositoryRef ref) {
+SettingsRepository settingsRepository(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
   return LocalSettingsRepository(db);
 }
 
 @riverpod
-AuthRepository authRepository(AuthRepositoryRef ref) => GhostAuthRepository();
+AuthRepository authRepository(Ref ref) => GhostAuthRepository();
 
 @riverpod
-Stream<AppMode> appMode(AppModeRef ref) =>
-    ref.watch(settingsRepositoryProvider).watchAppMode();
-
-@riverpod
-Stream<UserPrefs> userPrefs(UserPrefsRef ref) =>
+Stream<UserPrefs> userPrefs(Ref ref) =>
     ref.watch(settingsRepositoryProvider).watchUserPrefs();
 
 @riverpod
-ThemeMode themeMode(ThemeModeRef ref) {
+ThemeMode themeMode(Ref ref) {
   final prefs = ref.watch(userPrefsProvider);
   return prefs.when(
     data: (p) => p.isDarkMode ? ThemeMode.dark : ThemeMode.light,
@@ -93,28 +94,3 @@ ThemeMode themeMode(ThemeModeRef ref) {
 /// consumed + cleared by AppShell to trigger the gentle confetti.
 final newlyEarnedAwardsProvider =
     StateProvider<List<HabitBadge>>((ref) => const []);
-
-/// Transient flag: when true, AppShell forces Flow mode regardless of the
-/// durable [AppMode] preference (set via the widget launch MethodChannel path).
-final widgetLaunchOverrideProvider = StateProvider<bool>((ref) => false);
-
-class _WidgetLaunchLifecycleObserver with WidgetsBindingObserver {
-  _WidgetLaunchLifecycleObserver(this._ref);
-  final Ref _ref;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _ref.read(widgetLaunchOverrideProvider.notifier).state = false;
-    }
-  }
-}
-
-final widgetLaunchLifecycleObserverProvider = Provider<WidgetsBindingObserver>(
-  (ref) {
-    final observer = _WidgetLaunchLifecycleObserver(ref);
-    WidgetsBinding.instance.addObserver(observer);
-    ref.onDispose(() => WidgetsBinding.instance.removeObserver(observer));
-    return observer;
-  },
-);

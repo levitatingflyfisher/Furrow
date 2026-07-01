@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/core/router/app_shell.dart';
 import 'package:furrow/core/storage/app_database.dart';
@@ -9,6 +10,7 @@ import 'package:furrow/features/habits/data/habit_marks_dao.dart';
 import 'package:furrow/features/habits/data/habits_dao.dart';
 import 'package:furrow/features/habits/data/habits_repository.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
+import 'package:furrow/features/habits/presentation/today_screen.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
 
 // Plain theme (no google_fonts runtime fetch in headless tests).
@@ -17,11 +19,32 @@ final _theme = ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB07A2E)),
 );
 
+// The shell reads GoRouterState for its nav index, so it must run under a
+// router. A minimal shell route serving the Today grid at /today mirrors the
+// real app closely enough for these widget tests.
+Future<void> _pumpShell(WidgetTester tester, AppDatabase db) async {
+  final router = GoRouter(
+    initialLocation: '/today',
+    routes: [
+      ShellRoute(
+        builder: (_, __, child) => AppShell(child: child),
+        routes: [
+          GoRoute(path: '/today', builder: (_, __) => const TodayScreen()),
+        ],
+      ),
+    ],
+  );
+  await tester.pumpWidget(ProviderScope(
+    overrides: [appDatabaseProvider.overrideWithValue(db)],
+    child: MaterialApp.router(theme: _theme, routerConfig: router),
+  ));
+}
+
 void main() {
-  // Regression: AppShell's Flow mode once collapsed the Today body to zero
-  // height (a `Center` in the bottom bar expanded to eat the whole Scaffold),
-  // leaving the grid blank. The body must render the seeded habit.
-  testWidgets('AppShell (Flow) renders the Today grid, not a blank body',
+  // The shell renders its routed child (the Today grid) as the body and shows
+  // the four-tab nav bar. (Regression: the bottom bar must size to its content,
+  // not expand to eat the whole Scaffold and collapse the body to zero height.)
+  testWidgets('AppShell renders the Today grid and the nav bar',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
@@ -32,13 +55,7 @@ void main() {
     final repo = HabitsRepository(HabitsDao(db), HabitMarksDao(db));
     await repo.createHabit(name: 'Walk', cadence: Cadence.binary);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: MaterialApp(
-        theme: _theme,
-        home: const AppShell(child: SizedBox.shrink()),
-      ),
-    ));
+    await _pumpShell(tester, db);
     // Let the drift query emit, then rebuild. (No pumpAndSettle — the confetti
     // widget animates indefinitely.)
     await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
@@ -48,7 +65,7 @@ void main() {
 
     expect(find.text('Walk'), findsOneWidget,
         reason: 'the Today grid must render the seeded habit, not a blank body');
-    expect(find.text('Flow'), findsOneWidget); // shell chrome present
+    expect(find.text('Garden'), findsOneWidget); // nav bar present (rich shell)
 
     // Close the db (cancels drift's stream-query batch timer) and let the tree
     // settle so no timer is pending at teardown.
@@ -69,13 +86,7 @@ void main() {
     final repo = HabitsRepository(HabitsDao(db), HabitMarksDao(db));
     final walkId = await repo.createHabit(name: 'Walk', cadence: Cadence.binary);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: MaterialApp(
-        theme: _theme,
-        home: const AppShell(child: SizedBox.shrink()),
-      ),
-    ));
+    await _pumpShell(tester, db);
     await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
@@ -123,13 +134,7 @@ void main() {
     final readId = await repo.createHabit(
         name: 'Read', cadence: Cadence.duration, targetValue: 20 * 60);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: MaterialApp(
-        theme: _theme,
-        home: const AppShell(child: SizedBox.shrink()),
-      ),
-    ));
+    await _pumpShell(tester, db);
     await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
@@ -176,13 +181,7 @@ void main() {
     final repo = HabitsRepository(HabitsDao(db), HabitMarksDao(db));
     final id = await repo.createHabit(name: 'Read', cadence: Cadence.binary);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: MaterialApp(
-        theme: _theme,
-        home: const AppShell(child: SizedBox.shrink()),
-      ),
-    ));
+    await _pumpShell(tester, db);
     await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));

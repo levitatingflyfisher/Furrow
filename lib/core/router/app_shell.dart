@@ -6,15 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/features/habits/domain/awards.dart';
-import 'package:furrow/features/habits/presentation/today_screen.dart';
-import 'package:furrow/features/settings/domain/user_prefs.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
-import 'package:furrow/shared/widgets/mode_pill.dart';
 import 'package:furrow/shared/widgets/theme_pill.dart';
 
-/// Owns the app chrome. Flow mode (default) shows only the Today grid for a
-/// calm single surface; Rich mode adds a four-tab nav. The gentle confetti +
-/// quiet fact line fire when an award is earned.
+/// Owns the app chrome: the Today/Garden/Stats/Settings shell with its four-tab
+/// nav bar. The gentle confetti + quiet fact line fire when an award is earned.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child});
   final Widget child;
@@ -58,20 +54,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       });
     });
 
-    final widgetOverride = ref.watch(widgetLaunchOverrideProvider);
-    final mode = widgetOverride
-        ? AppMode.flow
-        : (ref.watch(appModeProvider).valueOrNull ?? AppMode.flow);
-
     return Stack(
       alignment: Alignment.topCenter,
       children: [
         // Positioned.fill gives the Scaffold TIGHT constraints. As a bare
         // (non-positioned) Stack child it would get loose ones and collapse the
         // body to zero height, so the Today grid's lazy ListView built nothing.
-        Positioned.fill(
-          child: mode == AppMode.flow ? _flow(context) : _rich(context),
-        ),
+        Positioned.fill(child: _shell(context)),
         // Gentle confetti: few particles, slow drift, furrow/gold/linen only.
         ConfettiWidget(
           confettiController: _confetti,
@@ -111,23 +100,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         ],
       );
 
-  Widget _flow(BuildContext context) => Scaffold(
-        appBar: _bar(),
-        body: const TodayScreen(),
-        bottomNavigationBar: const SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            // A Row (not Center) so the bar sizes to the pill's height; Center
-            // has no intrinsic height and would expand to eat the whole body.
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [ModePill()],
-            ),
-          ),
-        ),
-      );
-
-  Widget _rich(BuildContext context) {
+  Widget _shell(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final index = switch (location) {
       '/garden' => 1,
@@ -138,28 +111,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       appBar: _bar(),
       body: widget.child,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: ModePill(),
-          ),
-          NavigationBar(
-            selectedIndex: index,
-            onDestinationSelected: (i) => context.go(
-                const ['/today', '/garden', '/stats', '/settings'][i]),
-            destinations: const [
-              NavigationDestination(
-                  icon: Icon(LucideIcons.layoutGrid), label: 'Today'),
-              NavigationDestination(
-                  icon: Icon(LucideIcons.sprout), label: 'Garden'),
-              NavigationDestination(
-                  icon: Icon(LucideIcons.barChart2), label: 'Stats'),
-              NavigationDestination(
-                  icon: Icon(LucideIcons.settings), label: 'Settings'),
-            ],
-          ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) =>
+            context.go(const ['/today', '/garden', '/stats', '/settings'][i]),
+        destinations: const [
+          NavigationDestination(
+              icon: Icon(LucideIcons.layoutGrid), label: 'Today'),
+          NavigationDestination(icon: Icon(LucideIcons.sprout), label: 'Garden'),
+          NavigationDestination(
+              icon: Icon(LucideIcons.barChart2), label: 'Stats'),
+          NavigationDestination(
+              icon: Icon(LucideIcons.settings), label: 'Settings'),
         ],
       ),
     );
