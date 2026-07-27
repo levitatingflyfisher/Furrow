@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Furrow — soil-brown ground with four inked furrow rows; the third row is
+       tracked in ochre (the FurrowRow signature). -->
+  <rect width="1024" height="1024" fill="#6E4A19"/>
+  <g fill="none" stroke-width="66" stroke-linecap="round">
+    <path d="M 190 300 Q 512 262 834 300" stroke="#F4ECDD"/>
+    <path d="M 190 430 Q 512 392 834 430" stroke="#F4ECDD"/>
+    <path d="M 190 580 Q 512 542 834 580" stroke="#D9A14E"/>
+    <path d="M 190 730 Q 512 692 834 730" stroke="#F4ECDD"/>
+  </g>
+</svg>
