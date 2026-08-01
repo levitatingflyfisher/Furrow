@@ -6,7 +6,11 @@ void main() => runFleetConformance(const FleetAppConfig(
       appId: 'furrow',
       // Furrow bundles Lora + Nunito, so there is no web-font fallback to
       // catch a character they cannot draw — C7 sweeps lib/ for any.
-      checks: FleetAppConfig.withBundledFonts,
+      // C8 — the review screen's count-cadence '+' now goes through
+      // OhIconButton.filled (see icon_buttons.dart); this stops any new
+      // bare IconButton.filled/.filledTonal in lib/ from reopening the
+      // ohStyle/Flutter 3.38.7 iconTheme collision.
+      checks: {...FleetAppConfig.withBundledFonts, FleetCheck.c8IconButtons},
       // Tier T: canonical openhearth_design tokens + text ladder consumed
       // by sibling path; theme construction stays local.
       styleTier: StyleTier.tokens,

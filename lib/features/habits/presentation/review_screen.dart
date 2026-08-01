@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/core/storage/app_database.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
@@ -224,7 +225,7 @@ class _ReviewCard extends ConsumerWidget {
               child: Text('$count',
                   style: Theme.of(context).textTheme.titleLarge),
             ),
-            IconButton.filled(
+            OhIconButton.filled(
               iconSize: 20,
               constraints:
                   const BoxConstraints(minWidth: 44, minHeight: 44),
