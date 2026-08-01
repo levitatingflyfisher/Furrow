@@ -1,7 +1,7 @@
 name: furrow
 description: Local-first daily-virtue & habit tracker — OpenHearth.
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.2.0+3
 
 environment:
   # Floor raised to satisfy sanctuary_auth_core / sanctuary_backup_ui's

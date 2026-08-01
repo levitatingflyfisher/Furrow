@@ -4,6 +4,9 @@ import 'package:oh_fleet_conformance/oh_fleet_conformance.dart';
 /// fleet canon lives in this one config, enforced as tests.
 void main() => runFleetConformance(const FleetAppConfig(
       appId: 'furrow',
+      // Furrow bundles Lora + Nunito, so there is no web-font fallback to
+      // catch a character they cannot draw — C7 sweeps lib/ for any.
+      checks: FleetAppConfig.withBundledFonts,
       // Tier T: canonical openhearth_design tokens + text ladder consumed
       // by sibling path; theme construction stays local.
       styleTier: StyleTier.tokens,

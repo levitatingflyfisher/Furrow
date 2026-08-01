@@ -674,7 +674,7 @@ packages:
       path: "../packages/oh_fleet_conformance"
       relative: true
     source: path
-    version: "0.2.1"
+    version: "0.5.1"
   openhearth_design:
     dependency: "direct main"
     description:

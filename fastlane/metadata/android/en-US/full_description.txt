@@ -1,0 +1,17 @@
+We are what we repeatedly do.
+
+Furrow is a daily-virtue and habit tracker for households — Benjamin Franklin's thirteen-virtues book of days, reimagined without streak-shaming or dark patterns.
+
+• Three cadences: simple tick, a count, or a timer
+• The FurrowRow inked grid — a week of days you can read at a glance
+• An evening review, in Franklin's own spirit
+• A focus virtue, if you want one thing to hold
+• Full control: mark, unmark, clear history, or rest a habit entirely
+• Encrypted backup with a 12-word recovery phrase
+
+Missing a day is not a failure state here. Nothing is lost, nothing scolds you, and there is no streak to protect.
+
+No ads, no accounts, no analytics. The APK asks for no network permission at all.
+
+Free and open source, MIT licensed.
+Source: https://github.com/levitatingflyfisher/Furrow
