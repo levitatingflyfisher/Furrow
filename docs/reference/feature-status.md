@@ -14,12 +14,12 @@ the caveats are in [limitations](../limitations.md).
 | `LogTimeSheet` (chips +5/+15/+30, exact stepper, live stopwatch) | ✅ |
 | Pure domain logic (value, progress, streak, best, clean-week) | ✅ (unit-tested) |
 | Franklin 13-virtue seed (opt-in) + virtue-of-the-week | ✅ |
-| Six awards (hardcoded checks) + gentle confetti | ✅ |
+| Six awards (hardcoded checks, criteria written on Stats, never revoked) + gentle confetti | ✅ (`six_awards_test`) |
 | Habit Detail (calm streak + heatmap), Stats (raw counts) | ✅ |
 | Onboarding with starter templates | ✅ |
 | Flow / Rich Today modes | ✅ |
 | Ghost mode (local-only, no account) | ✅ |
-| Local storage (Drift/SQLite), schemaVersion 1 | ✅ |
+| Local storage (Drift/SQLite), schemaVersion 2 (soft-deleted habits) | ✅ |
 | Android APK + installable web PWA, fully offline | ✅ |
 | Bundled fonts (Lora + Nunito), no CDN fetch | ✅ (guarded by a test) |
 | Concurrent-tap-safe mark writes | ✅ (regression-tested) |

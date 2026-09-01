@@ -6,6 +6,7 @@ import 'package:furrow/features/habits/domain/awards.dart';
 import 'package:furrow/features/habits/domain/habit_logic.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
+import 'package:furrow/shared/widgets/load_failure.dart';
 
 /// Calm stats: raw keeping counts (no percentages, no bars) + the award shelf.
 class StatsScreen extends ConsumerWidget {
@@ -19,10 +20,14 @@ class StatsScreen extends ConsumerWidget {
 
     return habitsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, st) => loadFailure(e, st,
+          title: "Couldn’t load your habits",
+          onRetry: () => ref.invalidate(activeHabitsProvider)),
       data: (habits) => marksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, st) => loadFailure(e, st,
+            title: "Couldn’t load your marks",
+            onRetry: () => ref.invalidate(allMarksProvider)),
         data: (allMarks) {
           final totalKept = habits.fold<int>(
             0,
@@ -44,14 +49,8 @@ class StatsScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.lg),
               Text('Awards', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  for (final a in kAwardMeta)
-                    _AwardChip(meta: a, earned: earned.contains(a.id)),
-                ],
-              ),
+              for (final a in kAwardMeta)
+                _AwardRow(meta: a, earned: earned.contains(a.id)),
               const SizedBox(height: AppSpacing.lg),
               if (habits.isNotEmpty) ...[
                 Text('By habit',
@@ -105,40 +104,61 @@ class _BigStat extends StatelessWidget {
   }
 }
 
-class _AwardChip extends StatelessWidget {
-  const _AwardChip({required this.meta, required this.earned});
+/// One award, with what it takes and whether it is earned written out.
+/// The criterion used to hide in a Tooltip, which a phone shows only on an
+/// unannounced long-press; earned and not-yet differed only by opacity.
+class _AwardRow extends StatelessWidget {
+  const _AwardRow({required this.meta, required this.earned});
   final AwardMeta meta;
   final bool earned;
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final color = earned ? AppColors.furrow500 : cs.onSurfaceVariant;
-    return Tooltip(
-      message: meta.description,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: earned
-              ? AppColors.furrow500.withValues(alpha: 0.10)
-              : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: earned
-                ? AppColors.furrow500.withValues(alpha: 0.4)
-                : cs.outlineVariant,
-          ),
-        ),
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    // Earned reads in the ochre: the deep tone on light, the scheme's light
+    // primary on dark, where furrow600 falls to about 3.5:1 (checked in
+    // award_criteria_test for both themes).
+    final ochre = theme.brightness == Brightness.dark
+        ? cs.primary
+        : AppColors.furrow600;
+    final accent = earned ? ochre : cs.onSurfaceVariant;
+    return Semantics(
+      container: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(meta.icon,
-                size: 16, color: color.withValues(alpha: earned ? 1 : 0.5)),
-            const SizedBox(width: 6),
-            Text(meta.name,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: color.withValues(alpha: earned ? 1 : 0.6),
-                    )),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(meta.icon, size: 20, color: accent),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(meta.name, style: theme.textTheme.titleMedium),
+                      Text(
+                        earned ? 'Earned' : 'Not yet',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: accent,
+                          fontWeight:
+                              earned ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(meta.description,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
           ],
         ),
       ),

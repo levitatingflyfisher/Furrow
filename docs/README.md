@@ -50,6 +50,7 @@ walkthrough with screenshots. If you write one, put it in `docs/tutorials/`.
 - **[Vision](../VISION.md)** — the one idea, the invariants, the honest scorecard.
 - **[Architecture overview](architecture/OVERVIEW.md)** — the layers + diagrams.
 - **[Architecture Decision Records](adr/)** — why each load-bearing choice was made.
+- **[Personas](explanation/personas.md)**: who agents play when they test the UI, with scenarios.
 - **[Concepts](concepts.md)** — habits, cadences, marks, virtues, the FurrowRow grid.
 - **[Privacy model](privacy-model.md)** — exactly what leaves the device (nothing),
   and how to check.

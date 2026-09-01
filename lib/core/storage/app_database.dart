@@ -25,6 +25,11 @@ class Habits extends Table {
       integer().withDefault(const Constant(0xFFB07A2E))(); // furrow500
   TextColumn get virtueKey => text().nullable()(); // 'temperance'… null for user habits
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  // Soft delete (schema v2). Removing a habit sets this; every normal query
+  // filters it out, Settings' Recently removed list reads it, Restore clears
+  // it, and Delete forever is the one hard delete. Marks are kept untouched
+  // while a habit is removed, so Restore brings its whole history back.
+  IntColumn get deletedAt => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -96,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
             ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -105,6 +110,11 @@ class AppDatabase extends _$AppDatabase {
           await _seedAwards();
           await customStatement(
               'CREATE INDEX IF NOT EXISTS ix_marks_habit_day ON habit_marks(habit_id, date_day)');
+        },
+        onUpgrade: (m, from, to) async {
+          // v2: soft delete for habits (a nullable column; existing rows
+          // read as live).
+          if (from < 2) await m.addColumn(habits, habits.deletedAt);
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

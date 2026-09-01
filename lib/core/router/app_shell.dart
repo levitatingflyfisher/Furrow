@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/features/habits/domain/awards.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
-import 'package:furrow/shared/widgets/theme_pill.dart';
 
 /// Owns the app chrome: the Today/Garden/Stats/Settings shell with its four-tab
 /// nav bar. The gentle confetti + quiet fact line fire when an award is earned.
@@ -42,11 +42,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       final fact = kAwardById[awards.first.id]?.fact ?? 'A mark made.';
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(fact, style: Theme.of(context).textTheme.titleMedium),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(fact, style: Theme.of(context).textTheme.titleMedium),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
           ref.read(newlyEarnedAwardsProvider.notifier).state = const [];
@@ -84,21 +86,35 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 
-  AppBar _bar() => AppBar(
-        title: const Text('Furrow'),
-        centerTitle: false,
-        actions: [
-          // "Plant a habit" lives in the bar, not a floating button: an extended
-          // FAB floated over the bottom grid rows and intercepted taps meant for
-          // their day-cells (e.g. logging time on a lower habit).
-          IconButton(
-            icon: const Icon(LucideIcons.plus),
-            tooltip: 'Plant a habit',
-            onPressed: () => context.push('/habit/new'),
-          ),
-          const Padding(padding: EdgeInsets.only(right: 8), child: ThemePill()),
-        ],
-      );
+  AppBar _bar() {
+    final themeMode =
+        ref.watch(userPrefsProvider).valueOrNull?.themeMode ??
+        OhThemeModePreference.defaultValue;
+    return AppBar(
+      title: const Text('Furrow'),
+      centerTitle: false,
+      actions: [
+        // "Plant a habit" lives in the bar, not a floating button: an extended
+        // FAB floated over the bottom grid rows and intercepted taps meant for
+        // their day-cells (e.g. logging time on a lower habit).
+        // Icon plus a short word (fleet top-bar ruling), not an icon whose
+        // only name is a tooltip a phone cannot show.
+        TextButton.icon(
+          icon: const Icon(LucideIcons.plus),
+          label: const Text('Plant'),
+          onPressed: () => context.push('/habit/new'),
+        ),
+        // The one theme control (light / dark / follow phone), on every
+        // tab's bar so it is never more than two taps away.
+        OhThemeToggle(
+          value: themeMode,
+          onChanged: (m) =>
+              ref.read(settingsRepositoryProvider).setThemeMode(m),
+        ),
+        const SizedBox(width: 4),
+      ],
+    );
+  }
 
   Widget _shell(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -110,19 +126,48 @@ class _AppShellState extends ConsumerState<AppShell> {
     };
     return Scaffold(
       appBar: _bar(),
-      body: widget.child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) =>
-            context.go(const ['/today', '/garden', '/stats', '/settings'][i]),
-        destinations: const [
-          NavigationDestination(
-              icon: Icon(LucideIcons.layoutGrid), label: 'Today'),
-          NavigationDestination(icon: Icon(LucideIcons.sprout), label: 'Garden'),
-          NavigationDestination(
-              icon: Icon(LucideIcons.barChart2), label: 'Stats'),
-          NavigationDestination(
-              icon: Icon(LucideIcons.settings), label: 'Settings'),
+      // Capped and centred on tablets and wide browser windows; the tabs'
+      // own lists keep their padding, so phones render as before.
+      body: OhPage(padding: EdgeInsets.zero, child: widget.child),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Undo for a removed habit, above the tabs. The shell outlives
+          // every tab, and the removal is soft, so nothing commits here.
+          // The nav bar below owns the bottom inset; without this the
+          // bar's own SafeArea would add an empty gesture-bar band above it.
+          MediaQuery.removePadding(
+            context: context,
+            removeBottom: true,
+            child: OhUndoBar(
+              controller: ref.watch(habitUndoProvider),
+              commitOnDispose: false,
+            ),
+          ),
+          NavigationBar(
+            selectedIndex: index,
+            onDestinationSelected: (i) => context.go(
+              const ['/today', '/garden', '/stats', '/settings'][i],
+            ),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(LucideIcons.layoutGrid),
+                label: 'Today',
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.sprout),
+                label: 'Garden',
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.barChart2),
+                label: 'Stats',
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.settings),
+                label: 'Settings',
+              ),
+            ],
+          ),
         ],
       ),
     );

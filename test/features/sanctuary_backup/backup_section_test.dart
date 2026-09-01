@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,7 +58,7 @@ void main() {
       expect(find.text('Restore from backup'), findsOneWidget);
     });
 
-    testWidgets('shows Export tile + Reset identity after seed acknowledged',
+    testWidgets('shows Export, Show words and Remove recovery words after setup',
         (tester) async {
       await tester.pumpWidget(
         _wrap(
@@ -72,7 +74,8 @@ void main() {
 
       expect(find.text('Export backup'), findsOneWidget);
       expect(find.text('Set up encrypted backup'), findsNothing);
-      expect(find.text('Reset identity'), findsOneWidget);
+      expect(find.text('Remove recovery words'), findsOneWidget);
+      expect(find.text('Show my recovery words'), findsOneWidget);
     });
 
     testWidgets('shows the "Previous backups" vault tile always',
@@ -109,7 +112,7 @@ void main() {
 
       // Needs no key: sovereignty means you can READ your data.
       expect(find.text('Export as plain JSON'), findsOneWidget);
-      expect(find.text('Unencrypted — readable by any program'),
+      expect(find.text('Unencrypted: readable by any program'),
           findsOneWidget);
     });
 
@@ -132,7 +135,53 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Encrypted Backup'), findsOneWidget);
+      expect(find.text('Backup'), findsOneWidget);
+    });
+
+    // The heading is drawn with its content in every state, never over
+    // nothing (backup package 0.3.0 migration note).
+    testWidgets('while backup status loads: heading plus a status line',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const BackupSection(), store: _SlowStore()),
+      );
+      await tester.pump();
+      expect(find.text('Backup'), findsOneWidget);
+      expect(find.text('Checking backup status…'), findsOneWidget);
+    });
+
+    testWidgets('if backup status cannot be read: heading, why, Try again',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const BackupSection(), store: _BrokenStore()),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Backup'), findsOneWidget);
+      expect(find.textContaining('Couldn’t read your backup settings'),
+          findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+    });
+
+    testWidgets('restore names the file plainly, not by extension',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const BackupSection(), store: InMemorySecureKeyStore()),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Load data from a backup file'), findsOneWidget);
+      expect(find.textContaining('.ohbk'), findsNothing);
     });
   });
+}
+
+/// Never answers, so the auth state stays loading.
+class _SlowStore extends InMemorySecureKeyStore {
+  @override
+  Future<String?> readMnemonic() => Completer<String?>().future;
+}
+
+/// Fails to read, so the auth state is an error.
+class _BrokenStore extends InMemorySecureKeyStore {
+  @override
+  Future<String?> readMnemonic() async => throw StateError('keychain locked');
 }

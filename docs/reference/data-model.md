@@ -2,8 +2,8 @@
 
 The exact on-device schema, defined in
 [`lib/core/storage/app_database.dart`](../../lib/core/storage/app_database.dart)
-(Drift). `schemaVersion` is **1**, created by a clean `onCreate` — no migrations
-yet. All storage is local; there is no server schema.
+(Drift). `schemaVersion` is **2**: a clean `onCreate`, and one `onUpgrade` step
+from v1 that adds `Habits.deletedAt`. All storage is local; there is no server schema.
 
 ## `Habits`
 
@@ -22,7 +22,8 @@ One row per habit. Primary key: `id` (text, app-generated UUID).
 | `icon` | text? | icon key |
 | `colorValue` | int | ARGB; default `0xFFB07A2E` (furrow ochre) |
 | `virtueKey` | text? | e.g. `temperance`; null for a user's own habit |
-| `archived` | bool | default false |
+| `archived` | bool | default false ("resting") |
+| `deletedAt` | int? | epoch millis when removed (soft delete, v2); null = live. Normal queries filter it out |
 | `sortOrder` | int | default 0 |
 | `createdAt` / `updatedAt` | int | epoch millis |
 
@@ -76,7 +77,7 @@ A small key → value store. Primary key: `key`.
 
 | Column | Type | Notes |
 |---|---|---|
-| `key` | text PK | e.g. theme, Flow/Rich mode, virtue-seed flag, `virtuePrecept_<key>` |
+| `key` | text PK | e.g. `theme_mode` (`system`, `light` or `dark`; an older two-way `theme` is still read: dark stays dark, light follows the phone), Flow/Rich mode, virtue-seed flag, `virtuePrecept_<key>` |
 | `value` | text | serialized value |
 
 A non-empty `UserPrefs` table is also the signal the router uses to decide

@@ -1,32 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:furrow/shared/theme/app_theme.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
-/// Tier-T lock: Furrow's TextTheme must stay byte-equal to the hand-rolled
-/// Lora/Nunito Material ladder it shipped with (now provided by
-/// openhearth_design's OhTypography.materialTextTheme). Every triple below
-/// is the OLD const block's literal value — if the shared package ever
-/// drifts, this fails before any golden does.
+/// Tier-T lock: Furrow's TextTheme is the shared habit-lineage ladder
+/// (openhearth_design's OhTypography.materialTextTheme), role for role. It is
+/// compared against the package, not against literals, so the next ladder
+/// move in ohStyle carries through instead of breaking this test; what it
+/// catches is Furrow drifting from the fleet by overriding a role locally.
+///
+/// It also pins that both themes carry the fleet colour roles, since Furrow
+/// builds its own ThemeData and OhTheme is not there to attach them.
 void main() {
-  // role → (family, size, weight)
-  const expected = <String, (String, double, FontWeight?)>{
-    'displayLarge': ('Lora', 57, FontWeight.w700),
-    'displayMedium': ('Lora', 45, FontWeight.w700),
-    'displaySmall': ('Lora', 36, FontWeight.w700),
-    'headlineLarge': ('Lora', 32, FontWeight.w700),
-    'headlineMedium': ('Lora', 28, FontWeight.w600),
-    'headlineSmall': ('Lora', 24, FontWeight.w600),
-    'titleLarge': ('Nunito', 22, FontWeight.w700),
-    'titleMedium': ('Nunito', 16, FontWeight.w600),
-    'titleSmall': ('Nunito', 14, FontWeight.w600),
-    'bodyLarge': ('Nunito', 16, null),
-    'bodyMedium': ('Nunito', 14, null),
-    'bodySmall': ('Nunito', 12, null),
-    'labelLarge': ('Nunito', 14, FontWeight.w600),
-    'labelMedium': ('Nunito', 12, FontWeight.w500),
-    'labelSmall': ('Nunito', 11, FontWeight.w500),
-  };
-
   Map<String, TextStyle?> roles(TextTheme t) => {
         'displayLarge': t.displayLarge,
         'displayMedium': t.displayMedium,
@@ -46,24 +31,33 @@ void main() {
       };
 
   void check(String themeName, ThemeData theme) {
+    final expected = roles(OhTypography.materialTextTheme);
     final actual = roles(theme.textTheme);
-    expected.forEach((role, spec) {
-      final (family, size, weight) = spec;
-      final style = actual[role];
-      expect(style, isNotNull, reason: '$themeName $role');
-      expect(style!.fontFamily, family, reason: '$themeName $role family');
-      expect(style.fontSize, size, reason: '$themeName $role size');
-      if (weight != null) {
-        expect(style.fontWeight, weight, reason: '$themeName $role weight');
-      }
+    expected.forEach((role, want) {
+      final got = actual[role];
+      expect(got, isNotNull, reason: '$themeName $role');
+      expect(got!.fontFamily, want!.fontFamily,
+          reason: '$themeName $role family');
+      expect(got.fontSize, want.fontSize, reason: '$themeName $role size');
+      expect(got.fontWeight, want.fontWeight,
+          reason: '$themeName $role weight');
     });
   }
 
-  test('light theme text ladder matches the original hand-rolled block', () {
+  test('body text is on the 0.7.0 ladder (16, not the old 14)', () {
+    expect(AppTheme.light.textTheme.bodyMedium!.fontSize, 16);
+  });
+
+  test('light theme text ladder is the shared ladder', () {
     check('light', AppTheme.light);
   });
 
-  test('dark theme text ladder matches the original hand-rolled block', () {
+  test('dark theme text ladder is the shared ladder', () {
     check('dark', AppTheme.dark);
+  });
+
+  test('both themes attach the fleet colour roles for their brightness', () {
+    expect(AppTheme.light.extension<OhColorRoles>(), OhColorRoles.light);
+    expect(AppTheme.dark.extension<OhColorRoles>(), OhColorRoles.hearthDark);
   });
 }

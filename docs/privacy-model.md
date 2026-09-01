@@ -24,12 +24,15 @@ party, no ad SDK, no sync. The only ways any data moves off the device are ones
 - **PDF export / system share sheet.** If you export or share, the file goes
   wherever you send it — that is your action and your choice, handled by the OS
   share mechanism, not a Furrow backend.
-- **Encrypted backup (`.ohbk`).** Settings → Encrypted Backup lets you export
+- **Encrypted backup (`.ohbk`).** Settings → Backup lets you export
   every habit, mark, and earned award as a file encrypted (ChaCha20-Poly1305)
   under a 12-word recovery phrase you generate and keep yourself — see
   [ADR-0008](adr/0008-encrypted-backup-seed-phrase.md). The phrase never
   leaves the device and there is no server that holds a copy of it or the
-  file; lose the phrase and the backup is unreadable, by design. This is a
+  file; lose the phrase and the backup is unreadable, by design.
+  On the web the phrase is stored under Furrow-scoped keys
+  (`appScopedKeyStoreOverride`), so other OpenHearth PWAs on the same origin
+  cannot read or overwrite it. This is a
   backup you carry yourself, not sync — nothing moves automatically between
   devices.
 
@@ -66,9 +69,9 @@ These claims are meant to be checkable, not trusted:
    them permit network I/O. `ACCESS_NETWORK_STATE` only lets code read *whether* a
    network exists (a transitive plugin dependency); with no `INTERNET`, the app
    still cannot send or receive a single byte.
-3. **Fonts are bundled, not fetched.** Lora and Nunito ship in `assets/fonts/` and
-   are declared in `pubspec.yaml`, so even the web build makes no runtime request
-   to a font CDN. An `offline_fonts_test` guards this.
+3. **Fonts are bundled, not fetched.** Lora and Nunito come from ohStyle's
+   `openhearth_design` package as bundled package fonts, so even the web build
+   makes no runtime request to a font CDN. An `offline_fonts_test` guards this.
 4. **Airplane mode.** Turn off all connectivity; every feature still works,
    because offline *is* the mode.
 

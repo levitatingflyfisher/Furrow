@@ -19,7 +19,7 @@ const List<AwardMeta> kAwardMeta = [
       'First mark.', LucideIcons.sprout),
   AwardMeta('chain_7', 'Seven', 'A seven-day chain on any one habit.',
       'Seven days.', LucideIcons.link),
-  AwardMeta('chain_30', 'Whetted', 'A thirty-day chain — the groove is worn.',
+  AwardMeta('chain_30', 'Whetted', 'A thirty-day chain. The groove is worn.',
       'Thirty days. The groove holds.', LucideIcons.gem),
   AwardMeta('clean_week', 'Clean Week',
       'Every habit met on every scheduled day of one week.', 'A clean week.',

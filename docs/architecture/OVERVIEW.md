@@ -36,7 +36,7 @@ flowchart TB
         awardsvc[AwardService]
         daos[HabitsDao · HabitMarksDao · AwardsDao]
     end
-    db[(Drift / SQLite<br/>on-device · schemaVersion 1)]
+    db[(Drift / SQLite<br/>on-device · schemaVersion 2)]
 
     today & detail --> providers{{Riverpod providers}}
     shell --> providers
@@ -157,7 +157,8 @@ classDiagram
 ```
 
 Full column detail in [reference/data-model.md](../reference/data-model.md). The
-schema is `schemaVersion 1` with a clean `onCreate` — no migrations yet.
+schema is `schemaVersion 2`: a clean `onCreate`, plus one `onUpgrade` step (v1 → v2
+adds `Habits.deletedAt` for soft delete).
 
 ## Module map (where to look)
 

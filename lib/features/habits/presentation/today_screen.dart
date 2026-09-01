@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
+import 'package:sanctuary_backup_ui/sanctuary_backup_ui.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/core/storage/app_database.dart';
 import 'package:furrow/features/habits/data/focus_override_store.dart';
@@ -17,6 +18,7 @@ import 'package:furrow/features/habits/presentation/review_screen.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
+import 'package:furrow/shared/widgets/load_failure.dart';
 
 const _weekdayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -44,10 +46,14 @@ class TodayScreen extends ConsumerWidget {
 
     return habitsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Could not load habits.\n$e')),
+      error: (e, st) => loadFailure(e, st,
+          title: "Couldn’t load your habits",
+          onRetry: () => ref.invalidate(activeHabitsProvider)),
       data: (habits) => marksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load marks.\n$e')),
+        error: (e, st) => loadFailure(e, st,
+            title: "Couldn’t load your marks",
+            onRetry: () => ref.invalidate(allMarksProvider)),
         data: (allMarks) => habits.isEmpty
             ? const _EmptyField()
             : _Grid(
@@ -131,6 +137,10 @@ class _Grid extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.lg),
       children: [
+        // Unfinished backup setup is a quiet, dismissable line here, never
+        // a gate in front of the grid (fleet first-run ruling). Renders
+        // nothing once backup is set up or while dismissed.
+        const BackupSetupReminder(),
         if (virtueHabits.isNotEmpty) _VirtueBanner(now: today),
         Card(
           child: Padding(

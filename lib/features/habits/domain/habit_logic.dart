@@ -59,46 +59,59 @@ Set<String> completedDayKeys(Habit h, List<HabitMark> marks) {
   return marks.where((m) => m.completed).map((m) => m.dateDay).toSet();
 }
 
-/// Consecutive completed calendar days ending today (or yesterday if today is
-/// still pending). Schedule-naive in v1; resets silently on any gap.
+// ── Streaks respect the schedule ──────────────────────────────────────────
+// A scheduled day left undone breaks a run; a day the habit is not scheduled
+// is neutral (not a miss); a completion on an unscheduled day still counts.
+// So a Mon/Wed/Fri habit kept perfectly runs 3 a week, not 1 forever, and a
+// daily habit is exactly the old calendar streak. For the same marks this is
+// never shorter than the old calendar-day count, so the change revokes
+// nothing (schedule_streak_test checks that property). weeklyCount habits
+// are "any day" (see isScheduledOn), so they still count calendar days.
+//
+// Walk the calendar, not elapsed time: DateTime(y, m, d - 1) always lands on
+// the previous calendar day, where subtract(Duration(days: 1)) is 24 elapsed
+// hours and lands on 23:00 two days back across a DST spring-forward.
+
+/// The current run ending today (or yesterday while today is still pending).
 int currentStreak(Habit h, List<HabitMark> marks, DateTime today) {
   final done = completedDayKeys(h, marks);
   if (done.isEmpty) return 0;
-  // Walk the calendar, not elapsed time: DateTime(y, m, d - 1) always lands
-  // on the previous calendar day, where subtract(Duration(days: 1)) is 24
-  // elapsed hours and lands on 23:00 two days back across a DST
-  // spring-forward — skipping the transition day's key entirely.
+  // The walk stops before the earliest completion: nothing earlier can add
+  // to the run, and a schedule with no days would otherwise never break.
+  final earliest = (done.toList()..sort()).first;
   var cursor = DateTime(today.year, today.month, today.day);
-  // Today not yet done? The streak may still be alive up to yesterday.
+  // Today not yet done? It is pending, not missed.
   if (!done.contains(cursor.toDateDay())) {
     cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
   }
   var streak = 0;
-  while (done.contains(cursor.toDateDay())) {
-    streak++;
+  while (cursor.toDateDay().compareTo(earliest) >= 0) {
+    if (done.contains(cursor.toDateDay())) {
+      streak++;
+    } else if (isScheduledOn(h, cursor)) {
+      break;
+    }
     cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
   }
   return streak;
 }
 
-/// Longest run of consecutive completed calendar days ever.
+/// The longest run ever, by the same rule as [currentStreak].
 int bestStreak(Habit h, List<HabitMark> marks) {
   final keys = completedDayKeys(h, marks).toList()..sort();
   if (keys.isEmpty) return 0;
-  var best = 1, run = 1;
-  DateTime parse(String k) => DateTime.parse(k);
-  for (var i = 1; i < keys.length; i++) {
-    final prev = parse(keys[i - 1]);
-    final cur = parse(keys[i]);
-    // daysBetweenDates, not difference().inDays: the latter reads the 23
-    // elapsed hours across a DST spring-forward as 0 days and wrongly
-    // resets the run.
-    if (daysBetweenDates(prev, cur) == 1) {
+  final done = keys.toSet();
+  final last = DateTime.parse(keys.last);
+  var cursor = DateTime.parse(keys.first);
+  var best = 0, run = 0;
+  while (!cursor.isAfter(last)) {
+    if (done.contains(cursor.toDateDay())) {
       run++;
-    } else {
-      run = 1;
+      if (run > best) best = run;
+    } else if (isScheduledOn(h, cursor)) {
+      run = 0;
     }
-    if (run > best) best = run;
+    cursor = DateTime(cursor.year, cursor.month, cursor.day + 1);
   }
   return best;
 }

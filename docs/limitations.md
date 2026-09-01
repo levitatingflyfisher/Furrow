@@ -8,7 +8,7 @@ For the shape of what's built vs. aspirational, see the
 ## No sync, no server-side backup, no multi-device
 
 - **Local-only.** There is no cloud, no sync, and no server-side backup by design
-  ([ADR-0004](adr/0004-local-first-ghost-mode.md)). Settings → Encrypted Backup
+  ([ADR-0004](adr/0004-local-first-ghost-mode.md)). Settings → Backup
   can export an encrypted `.ohbk` copy of your habits, marks, and awards under
   a recovery phrase you generate and keep yourself
   ([ADR-0008](adr/0008-encrypted-backup-seed-phrase.md)) — but nothing moves
@@ -27,9 +27,10 @@ For the shape of what's built vs. aspirational, see the
 - **`weeklyCount` is schema-only.** A habit you do "N times a week" is not yet
   expressible in the UI — v1 treats `weeklyCount` as "any day". The columns exist;
   the week-grained UI and week streak do not.
-- **Streaks are schedule-naive.** The streak counts consecutive completed
-  *calendar* days, not scheduled days. A habit scheduled Mon/Wed/Fri does not get
-  a streak that understands the gaps — this is a deliberate v1 simplification.
+- **Streaks follow fixed-day schedules only.** A day off the schedule is not a
+  miss (so Mon/Wed/Fri keeps its run), but `weeklyCount` habits are still "any
+  day", so their streak counts calendar days until the week-grained streak
+  exists.
 - **Streaks reset silently and are never shown in red.** That's a feature
   ([ADR-0007](adr/0007-no-dark-patterns.md)), but if you *want* an alarming
   streak, Furrow will not give you one.
@@ -46,8 +47,14 @@ For the shape of what's built vs. aspirational, see the
   past *count* or *duration* edit still goes through the detail screen — inline
   past-editing for those cadences is deferred (it needs a day-parameterised
   sheet).
-- **Habit deletion vs. archive.** Habits are archived (hidden, kept) rather than
-  hard-deleted in the normal flow, to preserve history.
+- **Habit deletion vs. archive.** Resting a habit hides it; removing it is a
+  soft delete with an Undo and a lasting Recently removed list in Settings.
+  Only Delete forever, confirmed, hard-deletes. Removed habits are never purged
+  on a timer. Deleting a single mark or clearing a habit's history is a real
+  delete whose Undo lasts only while the detail screen is open.
+- **Backups from a newer build.** Schema v2 (soft delete) writes
+  `schemaVersion: 2`, so an older Furrow refuses a newer backup as "from a
+  newer version" rather than restoring removed habits as live.
 
 ## Other deferred pieces
 

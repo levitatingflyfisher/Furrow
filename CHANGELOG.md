@@ -31,10 +31,6 @@ thumb-sized moment, and the inked grid becomes the beautiful output.
 ## [Unreleased]
 
 ### Added
-- `assets/fonts/OFL.txt`: the SIL Open Font License 1.1 text with the
-  Lora and Nunito copyright notices (taken from the fonts' own
-  metadata) now ships alongside the bundled faces, as the OFL requires;
-  referenced from the README's License section.
 - Snapshot vault ("Previous backups" in Settings): every encrypted
   export and every restore leaves a stamped on-device snapshot
   (keep-10, pinnable) you can restore, pin or delete.
@@ -61,6 +57,13 @@ thumb-sized moment, and the inked grid becomes the beautiful output.
   Furrow's posture — tokens style tier, POST_NOTIFICATIONS + VIBRATE
   (and structurally NO INTERNET), size budgets in `budgets.json`,
   canonical test harness — is now enforced by tests, not prose.
+
+### Changed
+- Lora and Nunito now come from `openhearth_design` (0.7.2+) as package
+  fonts instead of Furrow's own copy: one source of truth for type,
+  ~340 KB less shipped in this app. `assets/fonts/` and its `fonts:`
+  pubspec block are gone; `test/shared/theme/offline_fonts_test.dart`
+  now asserts the package fonts resolve instead of pinning a local copy.
 
 ### Fixed
 - The clean-week award no longer permanently disqualifies a habit

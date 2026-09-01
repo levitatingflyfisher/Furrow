@@ -75,14 +75,14 @@ void main() {
     // within the viewport/cache extent, so this also exercises the widget's
     // own layout at 320dp/textScale 3.0, not just the tiles above the fold.
     await tester.scrollUntilVisible(
-      find.text('Encrypted Backup'),
+      find.text('Backup'),
       300,
       scrollable: find.byType(Scrollable),
     );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Encrypted Backup'), findsOneWidget);
+    expect(find.text('Backup'), findsOneWidget);
     expect(find.text('Export backup'), findsOneWidget);
 
     // The v0.2.0 tiles must also survive the 320dp/3.0x sweep. Scroll each
@@ -106,13 +106,13 @@ void main() {
     expect(find.text('Export as plain JSON'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('Reset identity'),
+      find.text('Remove recovery words'),
       300,
       scrollable: find.byType(Scrollable),
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('Reset identity'), findsOneWidget);
+    expect(find.text('Remove recovery words'), findsOneWidget);
   });
 
   testWidgets('renders the backup section between the divider and the info tile',
@@ -127,7 +127,7 @@ void main() {
     ));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    expect(find.text('Encrypted Backup'), findsOneWidget);
+    expect(find.text('Backup'), findsOneWidget);
     expect(find.text('Furrow'), findsOneWidget); // the info tile still there
   });
 }

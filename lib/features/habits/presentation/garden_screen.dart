@@ -7,6 +7,7 @@ import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/features/habits/domain/habit_logic.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
+import 'package:furrow/shared/widgets/load_failure.dart';
 
 /// The field: every habit with its keeping so far. Tap one for its detail.
 class GardenScreen extends ConsumerWidget {
@@ -20,10 +21,14 @@ class GardenScreen extends ConsumerWidget {
 
     return habitsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (e, st) => loadFailure(e, st,
+          title: "Couldn’t load your habits",
+          onRetry: () => ref.invalidate(activeHabitsProvider)),
       data: (habits) => marksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, st) => loadFailure(e, st,
+            title: "Couldn’t load your marks",
+            onRetry: () => ref.invalidate(allMarksProvider)),
         data: (allMarks) {
           if (habits.isEmpty) {
             return Center(

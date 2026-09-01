@@ -27,10 +27,10 @@ class FurrowBackupSerializer
   ///
   /// The shape is Furrow's SHIPPED one (`app`/`schemaVersion`/`exportedAt`/
   /// top-level `tables`) with one ADDITIVE key the v2 retention spec needs
-  /// (`createdAt`, same instant as `exportedAt`). The shipped reader only
-  /// looks at app + schemaVersion + tables and ignores unknown keys, so
-  /// backups made by this build still restore on pre-v2 Furrow installs —
-  /// the wire format is extended, never broken.
+  /// (`createdAt`, same instant as `exportedAt`). `schemaVersion` is the
+  /// database's: since schema v2 (soft-deleted habits carry `deletedAt`) an
+  /// older Furrow refuses these backups as newer rather than restoring
+  /// removed habits as live. Older backups still restore here.
   @override
   Future<Uint8List> dumpAll() async {
     final allHabits = await _db.select(_db.habits).get();
@@ -135,6 +135,9 @@ class FurrowBackupSerializer
                 colorValue: Value(row['colorValue'] as int? ?? 0xFFB07A2E),
                 virtueKey: Value(row['virtueKey'] as String?),
                 archived: Value(row['archived'] as bool? ?? false),
+                // v2 soft delete; a v1 backup has no key, so every habit
+                // in it restores live.
+                deletedAt: Value(row['deletedAt'] as int?),
                 sortOrder: Value(row['sortOrder'] as int? ?? 0),
                 createdAt: row['createdAt'] as int,
                 updatedAt: row['updatedAt'] as int,

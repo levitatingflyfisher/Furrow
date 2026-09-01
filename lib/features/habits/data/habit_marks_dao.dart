@@ -34,6 +34,10 @@ class HabitMarksDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> insert(HabitMarksCompanion c) => into(habitMarks).insert(c);
 
+  /// Re-inserts a whole row, id included (Undo of a delete).
+  Future<void> insertRow(HabitMark m) =>
+      into(habitMarks).insertOnConflictUpdate(m);
+
   Future<void> updateValue(String id, int value, bool completed) =>
       (update(habitMarks)..where((t) => t.id.equals(id))).write(
         HabitMarksCompanion(

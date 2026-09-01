@@ -1,6 +1,7 @@
 // lib/core/providers/core_providers.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:furrow/core/auth/auth_repository.dart';
@@ -47,6 +48,11 @@ Stream<List<Habit>> activeHabits(Ref ref) =>
 Stream<List<Habit>> restingHabits(Ref ref) =>
     ref.watch(habitsRepositoryProvider).watchArchived();
 
+/// Removed (soft-deleted) habits: Settings' Recently removed list.
+@riverpod
+Stream<List<Habit>> removedHabits(Ref ref) =>
+    ref.watch(habitsRepositoryProvider).watchRemoved();
+
 /// All marks recorded on a given `yyyy-MM-dd` (the Today grid cells).
 @riverpod
 Stream<List<HabitMark>> marksForDay(Ref ref, String dateDay) =>
@@ -84,11 +90,22 @@ Stream<UserPrefs> userPrefs(Ref ref) =>
 ThemeMode themeMode(Ref ref) {
   final prefs = ref.watch(userPrefsProvider);
   return prefs.when(
-    data: (p) => p.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+    data: (p) => p.themeMode.themeMode,
     loading: () => ThemeMode.system,
     error: (_, __) => ThemeMode.system,
   );
 }
+
+/// The app-wide Undo offer for removing a habit. The detail screen pops
+/// after Remove, so the offer has to outlive it: the bar lives in the
+/// AppShell. No timer (fleet delete ruling); it ends on Undo, Dismiss, or the
+/// next removal. The habit is soft-deleted, so letting the offer go loses
+/// nothing: Settings' Recently removed list keeps the way back.
+final habitUndoProvider = Provider<OhUndoController>((ref) {
+  final controller = OhUndoController();
+  ref.onDispose(controller.dispose);
+  return controller;
+});
 
 /// Awards earned by the most recent mark write. Set by the habits controller,
 /// consumed + cleared by AppShell to trigger the gentle confetti.

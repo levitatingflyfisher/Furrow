@@ -17,8 +17,9 @@ put type errors at runtime and duplicate the web/native plumbing.
 **Use Drift over SQLite** (`drift` + `drift_flutter`, with `sqlite3_flutter_libs`
 native and `sqlite3.wasm` + `drift_worker.js` on web). Tables and the database are
 declared in `lib/core/storage/app_database.dart`; DAOs and repositories provide
-typed access; the database is `schemaVersion 1` with a clean `onCreate` that
-creates tables, seeds the six awards, and adds the `(habit_id, date_day)` index.
+typed access; the database started at `schemaVersion 1` with a clean `onCreate`
+that creates tables, seeds the six awards, and adds the `(habit_id, date_day)`
+index. v2 added the first `onUpgrade` step (`Habits.deletedAt`, soft delete).
 
 ## Consequences
 

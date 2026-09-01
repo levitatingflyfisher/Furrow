@@ -12,6 +12,7 @@ import 'package:furrow/features/habits/presentation/award_recheck.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
+import 'package:furrow/shared/widgets/load_failure.dart';
 
 /// The evening review — Franklin's actual loop. One pass down the day's
 /// rows with thumb-sized controls, any evening (or the morning after; the
@@ -49,61 +50,67 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         title: const Text('Evening review'),
         leading: IconButton(
           icon: const Icon(LucideIcons.x),
+          tooltip: 'Close',
           onPressed: () => context.pop(),
         ),
       ),
-      body: habitsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load habits.\n$e')),
-        data: (habits) {
-          final day = DateTime.parse(_dateDay);
-          final scheduled =
-              habits.where((h) => isScheduledOn(h, day)).toList();
-          final marks = marksAsync.value ?? const <HabitMark>[];
-          return Column(
-            children: [
-              _DayChips(
-                today: _today,
-                selected: _dateDay,
-                onSelect: (d) => setState(() => _dateDay = d),
-              ),
-              Expanded(
-                child: scheduled.isEmpty
-                    ? Center(
-                        child: Text('Nothing scheduled this day.',
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(AppSpacing.md,
-                            AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
-                        itemCount: scheduled.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: AppSpacing.sm),
-                        itemBuilder: (context, i) => _ReviewCard(
-                          habit: scheduled[i],
-                          dateDay: _dateDay,
-                          marks: marks
-                              .where((m) => m.habitId == scheduled[i].id)
-                              .toList(),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: habitsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(e, st,
+              title: "Couldn’t load your habits",
+              onRetry: () => ref.invalidate(activeHabitsProvider)),
+          data: (habits) {
+            final day = DateTime.parse(_dateDay);
+            final scheduled =
+                habits.where((h) => isScheduledOn(h, day)).toList();
+            final marks = marksAsync.value ?? const <HabitMark>[];
+            return Column(
+              children: [
+                _DayChips(
+                  today: _today,
+                  selected: _dateDay,
+                  onSelect: (d) => setState(() => _dateDay = d),
+                ),
+                Expanded(
+                  child: scheduled.isEmpty
+                      ? Center(
+                          child: Text('Nothing scheduled this day.',
+                              style: Theme.of(context).textTheme.bodyMedium),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                              AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
+                          itemCount: scheduled.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppSpacing.sm),
+                          itemBuilder: (context, i) => _ReviewCard(
+                            habit: scheduled[i],
+                            dateDay: _dateDay,
+                            marks: marks
+                                .where((m) => m.habitId == scheduled[i].id)
+                                .toList(),
+                          ),
                         ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => context.pop(),
+                        child: const Text('Done: field tended'),
                       ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => context.pop(),
-                      child: const Text('Done — field tended'),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -322,7 +329,7 @@ class ReviewDoorCard extends StatelessWidget {
                     Text('Evening review',
                         style: Theme.of(context).textTheme.titleMedium),
                     Text(
-                      'Walk the day in one pass — big buttons, any day '
+                      'Walk the day in one pass: big buttons, any day '
                       'this week.',
                       style: Theme.of(context)
                           .textTheme

@@ -43,9 +43,14 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
   bool _loading = true;
   bool _editing = false;
 
+  /// Plant / Save is live only when the name has something in it, so the
+  /// constraint is visible before the tap rather than a silent no-op after.
+  bool get _canSave => _name.text.trim().isNotEmpty;
+
   @override
   void initState() {
     super.initState();
+    _name.addListener(_onNameChanged);
     if (widget.habitId == null) {
       _loading = false;
     } else {
@@ -73,8 +78,11 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
     });
   }
 
+  void _onNameChanged() => setState(() {});
+
   @override
   void dispose() {
+    _name.removeListener(_onNameChanged);
     _name.dispose();
     _unit.dispose();
     super.dispose();
@@ -128,113 +136,116 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
         title: Text(_editing ? 'Edit habit' : 'Plant a habit'),
         actions: [
           TextButton(
-            onPressed: _save,
+            onPressed: _canSave ? _save : null,
             child: Text(_editing ? 'Save' : 'Plant'),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          TextField(
-            controller: _name,
-            textCapitalization: TextCapitalization.sentences,
-            autofocus: !_editing,
-            decoration: const InputDecoration(
-              labelText: 'Name',
-              hintText: 'e.g. Read, Walk, Tidy the kitchen',
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            TextField(
+              controller: _name,
+              textCapitalization: TextCapitalization.sentences,
+              autofocus: !_editing,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                hintText: 'e.g. Read, Walk, Tidy the kitchen',
+              ),
+              onSubmitted: (_) => _save(),
             ),
-            onSubmitted: (_) => _save(),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const _SectionLabel('How is it done?'),
-          const SizedBox(height: AppSpacing.sm),
-          if (_editing)
-            _CadenceCard(cadence: _cadence, selected: true, onTap: () {})
-          else
-            for (final c in Cadence.values) ...[
-              _CadenceCard(
-                cadence: c,
-                selected: _cadence == c,
-                onTap: () => setState(() => _cadence = c),
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('How is it done?'),
+            const SizedBox(height: AppSpacing.sm),
+            if (_editing)
+              _CadenceCard(cadence: _cadence, selected: true, onTap: () {})
+            else
+              for (final c in Cadence.values) ...[
+                _CadenceCard(
+                  cadence: c,
+                  selected: _cadence == c,
+                  onTap: () => setState(() => _cadence = c),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            if (_cadence == Cadence.count) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _Stepper(
+                label: 'Daily target',
+                value: _countTarget,
+                suffix: _unit.text.trim().isEmpty ? 'times' : _unit.text.trim(),
+                onChanged: (v) => setState(() => _countTarget = v.clamp(1, 99)),
               ),
               const SizedBox(height: AppSpacing.sm),
-            ],
-          if (_cadence == Cadence.count) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _Stepper(
-              label: 'Daily target',
-              value: _countTarget,
-              suffix: _unit.text.trim().isEmpty ? 'times' : _unit.text.trim(),
-              onChanged: (v) => setState(() => _countTarget = v.clamp(1, 99)),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: _unit,
-              decoration: const InputDecoration(
-                labelText: 'Unit (optional)',
-                hintText: 'glasses, pages, reps…',
+              TextField(
+                controller: _unit,
+                decoration: const InputDecoration(
+                  labelText: 'Unit (optional)',
+                  hintText: 'glasses, pages, reps…',
+                ),
+                onChanged: (_) => setState(() {}),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ],
-          if (_cadence == Cadence.duration) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _Stepper(
-              label: 'Daily target',
-              value: _durationMins,
-              suffix: 'min',
-              step: 5,
-              onChanged: (v) => setState(() => _durationMins = v.clamp(1, 600)),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          const _SectionLabel('When?'),
-          const SizedBox(height: AppSpacing.sm),
-          SegmentedButton<ScheduleType>(
-            segments: const [
-              ButtonSegment(value: ScheduleType.daily, label: Text('Every day')),
-              ButtonSegment(
-                  value: ScheduleType.specificDays, label: Text('Some days')),
             ],
-            selected: {_schedule},
-            onSelectionChanged: (s) => setState(() => _schedule = s.first),
-          ),
-          if (_schedule == ScheduleType.specificDays) ...[
+            if (_cadence == Cadence.duration) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _Stepper(
+                label: 'Daily target',
+                value: _durationMins,
+                suffix: 'min',
+                step: 5,
+                onChanged: (v) => setState(() => _durationMins = v.clamp(1, 600)),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('When?'),
             const SizedBox(height: AppSpacing.sm),
-            _WeekdayPicker(
-              mask: _weekdayMask,
-              onChanged: (m) => setState(() => _weekdayMask = m),
+            SegmentedButton<ScheduleType>(
+              segments: const [
+                ButtonSegment(value: ScheduleType.daily, label: Text('Every day')),
+                ButtonSegment(
+                    value: ScheduleType.specificDays, label: Text('Some days')),
+              ],
+              selected: {_schedule},
+              onSelectionChanged: (s) => setState(() => _schedule = s.first),
             ),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          const _SectionLabel('Colour'),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (final c in _habitSwatches)
-                GestureDetector(
-                  onTap: () => setState(() => _color = c),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(c),
-                      shape: BoxShape.circle,
-                      border: _color == c
-                          ? Border.all(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              width: 3)
-                          : null,
+            if (_schedule == ScheduleType.specificDays) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _WeekdayPicker(
+                mask: _weekdayMask,
+                onChanged: (m) => setState(() => _weekdayMask = m),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('Colour'),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final c in _habitSwatches)
+                  GestureDetector(
+                    onTap: () => setState(() => _color = c),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Color(c),
+                        shape: BoxShape.circle,
+                        border: _color == c
+                            ? Border.all(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                width: 3)
+                            : null,
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-        ],
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+        ),
       ),
     );
   }

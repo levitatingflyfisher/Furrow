@@ -20,6 +20,7 @@ class HabitsRepository {
   Stream<List<Habit>> watchActive() => _habits.watchActive();
   Stream<List<Habit>> watchArchived() => _habits.watchArchived();
   Stream<List<Habit>> watchAll() => _habits.watchAll();
+  Stream<List<Habit>> watchRemoved() => _habits.watchRemoved();
   Future<List<Habit>> activeHabitsOnce() => _habits.getActive();
   Future<List<HabitMark>> allMarksOnce() => _marks.getAll();
   Stream<Habit?> watchHabit(String id) => _habits.watchById(id);
@@ -87,31 +88,63 @@ class HabitsRepository {
     ));
   }
 
-  /// Deletes a habit and all its marks.
-  Future<void> deleteHabit(String id) async {
+  /// Removes a habit softly: it leaves every list but keeps its marks, and
+  /// [restoreHabit] brings it back whole (the Undo bar, then Settings'
+  /// Recently removed list).
+  Future<void> removeHabit(String id) =>
+      _habits.setDeletedAt(id, clock.now().millisecondsSinceEpoch);
+
+  Future<void> restoreHabit(String id) => _habits.setDeletedAt(id, null);
+
+  /// Deletes a habit and all its marks for good: the one hard delete, only
+  /// reachable from Recently removed behind a confirm.
+  Future<void> deleteHabitForever(String id) async {
     await _marks.deleteForHabit(id);
     await _habits.deleteById(id);
   }
 
-  /// Seeds Franklin's thirteen virtues as binary/daily habits (idempotent on
-  /// virtueKey — skips any already present).
-  Future<void> seedFranklinVirtues() async {
-    final existing = await _habits.getActive();
-    final present = existing.map((h) => h.virtueKey).whereType<String>().toSet();
+  /// Seeds Franklin's thirteen virtues as binary/daily habits, idempotent on
+  /// virtueKey across every habit the household has: an active or resting
+  /// virtue is left as it is, and a removed one is brought back rather than
+  /// planted a second time. Returns what it did.
+  Future<SeedResult> seedFranklinVirtues() async {
+    final existing = await _habits.getAllIncludingRemoved();
+    final byKey = <String, Habit>{};
+    for (final h in existing) {
+      final k = h.virtueKey;
+      if (k != null) byKey.putIfAbsent(k, () => h);
+    }
     var order = await _habits.nextSortOrder();
     final now = clock.now().millisecondsSinceEpoch;
+    var planted = 0, restored = 0, resting = 0, active = 0;
     for (final v in kFranklinVirtues) {
-      if (present.contains(v.key)) continue;
-      await _habits.upsert(HabitsCompanion.insert(
-        id: _uuid.v4(),
-        name: v.name,
-        cadence: Cadence.binary.name,
-        virtueKey: Value(v.key),
-        sortOrder: Value(order++),
-        createdAt: now,
-        updatedAt: now,
-      ));
+      final h = byKey[v.key];
+      if (h == null) {
+        await _habits.upsert(HabitsCompanion.insert(
+          id: _uuid.v4(),
+          name: v.name,
+          cadence: Cadence.binary.name,
+          virtueKey: Value(v.key),
+          sortOrder: Value(order++),
+          createdAt: now,
+          updatedAt: now,
+        ));
+        planted++;
+      } else if (h.deletedAt != null) {
+        await restoreHabit(h.id);
+        restored++;
+      } else if (h.archived) {
+        resting++;
+      } else {
+        active++;
+      }
     }
+    return SeedResult(
+      planted: planted,
+      restored: restored,
+      resting: resting,
+      alreadyActive: active,
+    );
   }
 
   // ── Marks ─────────────────────────────────────────────────────────────────
@@ -204,6 +237,20 @@ class HabitsRepository {
   }
 
   Future<void> deleteMark(String id) => _marks.deleteById(id);
+
+  /// Puts deleted marks back (the detail screen's Undo). A binary/count day
+  /// keeps one row, so a mark whose day has been re-marked since is skipped
+  /// rather than duplicated; duration sessions always go back.
+  Future<void> restoreMarks(Habit h, List<HabitMark> marks) =>
+      _marks.transaction(() async {
+        final oneRowPerDay = Cadence.fromName(h.cadence) != Cadence.duration;
+        for (final m in marks) {
+          if (oneRowPerDay && await _marks.dayMark(h.id, m.dateDay) != null) {
+            continue;
+          }
+          await _marks.insertRow(m);
+        }
+      });
 
   /// Clear a habit's whole history, keeping the habit. The "reset" the
   /// detail screen offers — forgiveness over prevention applies to data

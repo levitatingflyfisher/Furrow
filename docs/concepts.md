@@ -10,8 +10,10 @@ choices were made, [adr/](adr/).
 A **habit** is one thing you're cultivating — "Read", "Drink water", "Meditate".
 Every habit has a **cadence** (how it's satisfied), a **schedule** (when it's
 expected), a **target**, a colour, and an optional link to a Franklin virtue.
-Habits can be archived (kept, hidden) but are not deleted casually. A habit is
-one **row** on the Today grid.
+Habits can be rested (archived: kept, hidden) or removed. Removing is soft: the
+habit and its marks move to Settings, Recently removed, where Restore brings
+them back and Delete forever is the one hard delete. A habit is one **row** on
+the Today grid.
 
 ## The three cadences
 
@@ -56,9 +58,11 @@ When a habit is *expected*:
 
 ## Streak
 
-A **streak** is the count of consecutive completed calendar days ending today (or
-yesterday, if today is still pending). It is **schedule-naive** in v1 — it counts
-calendar days, not scheduled days — and it **resets silently** on any gap: never
+A **streak** is the run of completed days ending today (or yesterday, if today is
+still pending), and it **respects the schedule**: a scheduled day left undone
+ends the run, a day the habit is not scheduled is neither a miss nor needed, and
+a completion on an unscheduled day still counts. A Mon/Wed/Fri habit kept for
+three weeks runs 9. It **resets silently** when a scheduled day is missed: never
 red, never a notification. `bestStreak` (the longest run ever) is kept as a calm
 record and shown only on Habit Detail. This restraint is deliberate; see
 [ADR-0007](adr/0007-no-dark-patterns.md).

@@ -35,7 +35,7 @@ const List<Virtue> kFranklinVirtues = [
   Virtue('tranquillity', 'Tranquillity',
       'Be not disturbed at trifles, or at accidents common or unavoidable.'),
   Virtue('chastity', 'Chastity',
-      'Rarely use venery but for health or offspring, never to dullness, weakness, or the injury of your own or another\'s peace or reputation.'),
+      'Rarely use venery but for health or offspring, never to dullness, weakness, or the injury of your own or another’s peace or reputation.'),
   Virtue('humility', 'Humility', 'Imitate Jesus and Socrates.'),
 ];
 
@@ -64,4 +64,49 @@ Virtue focusVirtueForWeek({
     }
   }
   return virtueOfWeek(anchorMonday, now);
+}
+
+/// What planting the thirteen virtues actually did, so the app can say so
+/// instead of always claiming "planted".
+class SeedResult {
+  const SeedResult({
+    this.planted = 0,
+    this.restored = 0,
+    this.resting = 0,
+    this.alreadyActive = 0,
+  });
+
+  /// New habits created for virtues that had none.
+  final int planted;
+
+  /// Removed virtues brought back (not duplicated).
+  final int restored;
+
+  /// Virtues already present but resting; left resting.
+  final int resting;
+
+  /// Virtues already present and active.
+  final int alreadyActive;
+}
+
+/// The one-line report Settings shows after planting.
+String seedMessage(SeedResult r) {
+  final parts = <String>[];
+  if (r.planted == kFranklinVirtues.length) {
+    parts.add('Planted the thirteen virtues.');
+  } else if (r.planted > 0) {
+    parts.add('Planted ${r.planted} of the thirteen virtues.');
+  }
+  if (r.restored > 0) {
+    parts.add('Brought back ${r.restored} you had removed.');
+  }
+  if (parts.isEmpty) {
+    parts.add('All thirteen are already planted.');
+    if (r.resting > 0) {
+      parts.add(r.resting == 1
+          ? '1 is resting; find it under Resting below.'
+          : '${r.resting} are resting; find them under Resting below.');
+    }
+  }
+  return parts.join(' ');
 }

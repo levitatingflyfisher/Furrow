@@ -1,4 +1,5 @@
 import 'package:furrow/features/settings/domain/user_prefs.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 abstract interface class SettingsRepository {
   Future<UserPrefs> getUserPrefs();
@@ -7,7 +8,9 @@ abstract interface class SettingsRepository {
   Future<void> setMonthlyGoalHours(int? hours);
   Future<void> setFlowTimerStyle(FlowTimerStyle style);
   Future<void> setAutoStop({required bool enabled, int thresholdHours = 2});
-  Future<void> setDarkMode(bool dark);
+  Future<void> setThemeMode(OhThemeModePreference mode);
   Future<void> setTimeFormat(TimeFormat format);
-  Future<void> setWeekStart(WeekStart start);
+  /// Records that onboarding is done. The router sends a device with no
+  /// preference rows to onboarding, so this is what lets a new user out.
+  Future<void> markOnboarded();
 }

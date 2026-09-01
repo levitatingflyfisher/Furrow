@@ -47,6 +47,10 @@ void main() async {
             },
           ),
         ),
+        // Web only: prefix the recovery-word keys with Furrow's app id, so
+        // fleet PWAs sharing one origin never share (or overwrite) each
+        // other's words. Native keychains are per-app already.
+        appScopedKeyStoreOverride(),
         backupSerializerProvider.overrideWith(
           (ref) => FurrowBackupSerializer(ref.watch(appDatabaseProvider)),
         ),
@@ -85,17 +89,9 @@ class _FurrowAppState extends ConsumerState<FurrowApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      // Wide screens: each screen caps its own body with OhPage, so app
+      // bars and backgrounds stay full width and only the content centres.
       routerConfig: router,
-      // On wide screens keep the single-column app centered at a comfortable
-      // reading width rather than stretching edge-to-edge (phones pass through).
-      builder: (context, child) {
-        final inner = child ?? const SizedBox.shrink();
-        if (MediaQuery.of(context).size.width <= 760) return inner;
-        return ColoredBox(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: Center(child: SizedBox(width: 760, child: inner)),
-        );
-      },
     );
   }
 }

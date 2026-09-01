@@ -142,7 +142,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Reset identity confirm dialog does not overflow',
+    testWidgets('Remove recovery words confirm dialog does not overflow',
         (tester) async {
       tester.view.physicalSize = const Size(320, 480);
       tester.view.devicePixelRatio = 1.0;
@@ -156,12 +156,13 @@ void main() {
       ));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      await tester.ensureVisible(find.text('Reset identity'));
+      await tester.ensureVisible(find.text('Remove recovery words'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reset identity'));
+      await tester.tap(find.text('Remove recovery words'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Reset identity?'), findsOneWidget);
+      expect(find.text('Remove recovery words from this device?'),
+          findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

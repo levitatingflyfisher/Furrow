@@ -6,7 +6,6 @@ import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
-import 'package:furrow/features/settings/domain/user_prefs.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
 
@@ -44,16 +43,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       case _Template.blank:
         break;
     }
-    // Writing any pref row marks the app as onboarded (router redirect checks
-    // for an empty UserPrefs table).
-    await ref.read(settingsRepositoryProvider).setWeekStart(WeekStart.sunday);
+    // The router sends a device with an empty UserPrefs table here; this row
+    // is what lets the user out.
+    await ref.read(settingsRepositoryProvider).markOnboarded();
     if (mounted) context.go('/today');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
+      // OhPage keeps the safe area and caps the pages on wide screens.
+      body: OhPage(
+        padding: EdgeInsets.zero,
         child: PageView(
           controller: _page,
           onPageChanged: (i) => setState(() => _index = i),
@@ -150,14 +151,14 @@ class _TemplatePage extends StatelessWidget {
         _Choice(
           icon: LucideIcons.sprout,
           title: 'Start with three',
-          subtitle: 'Move, Read, Water — a tick, a timer, and a count.',
+          subtitle: 'Move, Read, Water: a tick, a timer, and a count.',
           recommended: true,
           onTap: () => onChoose(_Template.three),
         ),
         const SizedBox(height: AppSpacing.sm),
         _Choice(
           icon: LucideIcons.bookOpen,
-          title: "Franklin's thirteen virtues",
+          title: "Franklin’s thirteen virtues",
           subtitle: 'Temperance, Silence, Order… his book of days.',
           onTap: () => onChoose(_Template.franklin),
         ),

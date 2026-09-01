@@ -30,7 +30,8 @@ seven-day grid:
 
 It ships an optional **Franklin thirteen-virtues** seed, a quiet virtue-of-the-week
 banner, a calm Habit Detail view (streak + heatmap), plain-count Stats, and six
-gently-earned awards. It runs on Android (APK) and the web (installable PWA) from
+gently-earned awards: each one says on the Stats screen what it takes, each can
+be earned by a habit with days off, and none is ever taken back. It runs on Android (APK) and the web (installable PWA) from
 one codebase, entirely offline.
 
 It is **not** a social app, a coach, or a productivity system with a funnel. It
@@ -81,14 +82,17 @@ claim (read the code, run the test) before you rely on it. As of v0.1.0:
   logged minute is acknowledged immediately, not held back until the target
   lands) — pinned by golden tests across phone/tablet and text-scale 1×–3×.
 - Pure domain logic (`habit_logic.dart`): day value, progress, completion,
-  current/best streak, clean-week — unit-tested.
+  current/best streak (schedule-aware: a day off the schedule is not a miss),
+  clean-week — unit-tested.
 - The Franklin thirteen-virtues seed + virtue-of-the-week rotation.
-- Six awards with hardcoded, earned-once checks; inline logging (tap = today,
+- Six awards with hardcoded, earned-once checks, pinned by
+  `six_awards_test.dart` (six seeded = six described; each earnable, the
+  chains on a Mon/Wed/Fri habit; never revoked); inline logging (tap = today,
   long-press = fix a past tick) with no screen hop.
 - Fully offline on Android (APK) and web (PWA), fonts bundled, boot spinner and
   service-worker self-heal baked into the web shell.
 - **Encrypted backup and restore** (`.ohbk`, a 12-word recovery phrase, no
-  server) — Settings → Encrypted Backup. A manual backup you carry yourself,
+  server) — Settings → Backup. A manual backup you carry yourself,
   not sync. ([ADR-0008](docs/adr/0008-encrypted-backup-seed-phrase.md))
 
 **Aspirational — documented, not shipped:**

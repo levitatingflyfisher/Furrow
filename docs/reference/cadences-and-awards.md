@@ -77,5 +77,14 @@ for every active habit that already existed at the week's Monday, every *schedul
 day that week is in that habit's completed set — and at least one habit was
 scheduled that week. A habit created mid-week disqualifies that week.
 
+The chains count *scheduled* days: `bestStreak` treats a day off the habit's
+schedule as neutral, so a Mon/Wed/Fri habit earns Seven after seven kept
+scheduled days.
+
 Award display metadata (name, description, icon, fact line) lives in `kAwardMeta`
-in `awards.dart`; earn-state lives in the `HabitBadges` table.
+in `awards.dart`; earn-state lives in the `HabitBadges` table. Stats writes each
+award's description and its state (Earned / Not yet) as text.
+`test/features/habits/six_awards_test.dart` holds the claims on this page:
+six seeded, six described, each earnable, none revoked. (Restoring an older
+backup is the one path that replaces earn-state, by design: it replaces
+everything with the backup.)

@@ -47,7 +47,7 @@ void main() {
   final today = DateTime(2026, 6, 25); // a Thursday
   String day(int ago) => today.subtract(Duration(days: ago)).toDateDay();
 
-  group('currentStreak (binary, schedule-naive)', () {
+  group('currentStreak (binary, daily)', () {
     test('counts consecutive completed days ending today', () {
       final marks = [_mark(day: day(0)), _mark(day: day(1)), _mark(day: day(2))];
       expect(currentStreak(_habit(), marks, today), 3);
