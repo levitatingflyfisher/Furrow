@@ -1,4 +1,5 @@
 import 'package:furrow/core/storage/app_database.dart';
+import 'package:furrow/features/habits/domain/franklin_virtues.dart';
 import 'package:furrow/shared/extensions/datetime_ext.dart';
 
 /// Per-week focus-virtue overrides, keyed by the week's Monday in the
@@ -29,4 +30,13 @@ class FocusOverrideStore {
           ..where((p) => p.key.equals(_key(weekMonday))))
         .go();
   }
+}
+
+/// The focus virtue for the week holding [today]: the household's override
+/// when set, else the rotation anchored on the year's first Monday week.
+Future<Virtue> focusVirtueOn(AppDatabase db, DateTime today) async {
+  final overrideKey = await FocusOverrideStore(db).overrideFor(today.startOfWeek);
+  final anchor = DateTime(today.year, 1, 1).startOfWeek;
+  return focusVirtueForWeek(
+      anchorMonday: anchor, now: today, overrideKey: overrideKey);
 }

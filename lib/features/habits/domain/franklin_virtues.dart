@@ -74,7 +74,15 @@ class SeedResult {
     this.restored = 0,
     this.resting = 0,
     this.alreadyActive = 0,
+    this.waiting = 0,
+    this.focusName,
   });
+
+  /// Newly planted virtues left resting until their week comes.
+  final int waiting;
+
+  /// This week's virtue, when this planting planted it (active).
+  final String? focusName;
 
   /// New habits created for virtues that had none.
   final int planted;
@@ -96,6 +104,20 @@ String seedMessage(SeedResult r) {
     parts.add('Planted the thirteen virtues.');
   } else if (r.planted > 0) {
     parts.add('Planted ${r.planted} of the thirteen virtues.');
+  }
+  if (r.planted > 0) {
+    final rest = r.planted == kFranklinVirtues.length && r.waiting == 12
+        ? 'twelve'
+        : '${r.waiting}';
+    if (r.focusName != null && r.waiting == 1) {
+      parts.add('${r.focusName} is this week’s; the other one rests until '
+          'its week comes.');
+    } else if (r.focusName != null && r.waiting > 0) {
+      parts.add('${r.focusName} is this week’s; the other $rest rest until '
+          'their week comes.');
+    } else if (r.waiting > 0) {
+      parts.add('${r.waiting} rest until their week comes.');
+    }
   }
   if (r.restored > 0) {
     parts.add('Brought back ${r.restored} you had removed.');

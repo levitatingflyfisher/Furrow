@@ -224,12 +224,10 @@ class _Grid extends ConsumerWidget {
 final focusVirtueProvider = FutureProvider.autoDispose
     .family<Virtue, String>((ref, todayKey) async {
   final db = ref.watch(appDatabaseProvider);
-  final today = DateTime.parse(todayKey);
-  final overrideKey =
-      await FocusOverrideStore(db).overrideFor(today.startOfWeek);
-  final anchor = DateTime(today.year, 1, 1).startOfWeek;
-  return focusVirtueForWeek(
-      anchorMonday: anchor, now: today, overrideKey: overrideKey);
+  final focus = await focusVirtueOn(db, DateTime.parse(todayKey));
+  // The rotation: this week's virtue wakes if the seed left it waiting.
+  await ref.read(habitsRepositoryProvider).promoteFocusVirtue(focus.key);
+  return focus;
 });
 
 class _VirtueBanner extends ConsumerWidget {

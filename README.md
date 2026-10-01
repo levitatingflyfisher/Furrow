@@ -21,7 +21,8 @@ the shipped Android build carries no `INTERNET` permission at all.)
   time — 30 minutes reading). All three live on the same seven-day row.
 - **The Franklin thirteen.** An optional starter set of Benjamin Franklin's
   thirteen virtues in his own order, each with its precept, plus a quiet
-  "virtue of the week" rotation.
+  "virtue of the week" rotation. It plants this week's virtue first; the others
+  wait, resting, for their week, as Franklin worked them.
 - **Calm by design.** Streaks never turn red, reset silently, and never nag.
   Stats are raw counts, not shame-inducing percentages. There are no punitive
   notifications. See [ADR-0007](docs/adr/0007-no-dark-patterns.md).

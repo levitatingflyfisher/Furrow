@@ -26,7 +26,17 @@ class HabitsRepository {
   Stream<Habit?> watchHabit(String id) => _habits.watchById(id);
   Future<Habit?> getHabit(String id) => _habits.getById(id);
   Future<void> reorder(List<String> ids) => _habits.reorder(ids);
-  Future<void> setArchived(String id, bool v) => _habits.setArchived(id, v);
+  /// Rests or wakes a habit by hand. A Franklin virtue still waiting for its
+  /// week leaves the rotation's care here: what the household chose stands.
+  Future<void> setArchived(String id, bool v) async {
+    final h = await _habits.getById(id);
+    final key = h?.virtueKey;
+    if (key != null) {
+      final waiting = await _waitingVirtues();
+      if (waiting.remove(key)) await _setWaitingVirtues(waiting);
+    }
+    await _habits.setArchived(id, v);
+  }
 
   Future<String> createHabit({
     required String name,
@@ -107,7 +117,12 @@ class HabitsRepository {
   /// virtueKey across every habit the household has: an active or resting
   /// virtue is left as it is, and a removed one is brought back rather than
   /// planted a second time. Returns what it did.
-  Future<SeedResult> seedFranklinVirtues() async {
+  ///
+  /// Franklin worked one virtue a week (checklist-manifesto-01): a newly
+  /// planted [focusKey] (this week's virtue) starts active, and every other
+  /// newly planted virtue starts resting, waiting for its week. The weekly
+  /// rotation wakes each in turn ([promoteFocusVirtue]).
+  Future<SeedResult> seedFranklinVirtues({required String focusKey}) async {
     final existing = await _habits.getAllIncludingRemoved();
     final byKey = <String, Habit>{};
     for (final h in existing) {
@@ -116,19 +131,28 @@ class HabitsRepository {
     }
     var order = await _habits.nextSortOrder();
     final now = clock.now().millisecondsSinceEpoch;
+    final waiting = await _waitingVirtues();
     var planted = 0, restored = 0, resting = 0, active = 0;
+    var focusPlanted = false;
     for (final v in kFranklinVirtues) {
       final h = byKey[v.key];
       if (h == null) {
+        final isFocus = v.key == focusKey;
         await _habits.upsert(HabitsCompanion.insert(
           id: _uuid.v4(),
           name: v.name,
           cadence: Cadence.binary.name,
           virtueKey: Value(v.key),
+          archived: Value(!isFocus),
           sortOrder: Value(order++),
           createdAt: now,
           updatedAt: now,
         ));
+        if (isFocus) {
+          focusPlanted = true;
+        } else {
+          waiting.add(v.key);
+        }
         planted++;
       } else if (h.deletedAt != null) {
         await restoreHabit(h.id);
@@ -139,12 +163,51 @@ class HabitsRepository {
         active++;
       }
     }
+    await _setWaitingVirtues(waiting);
+    final focusName =
+        kFranklinVirtues.where((v) => v.key == focusKey).firstOrNull?.name;
     return SeedResult(
       planted: planted,
       restored: restored,
       resting: resting,
       alreadyActive: active,
+      waiting: planted - (focusPlanted ? 1 : 0),
+      focusName: focusPlanted ? focusName : null,
     );
+  }
+
+  /// The weekly rotation: wakes [focusKey]'s virtue if the seed left it
+  /// waiting for its week. Last week's virtue stays awake (nothing earned is
+  /// taken away). A virtue rested or woken by hand, or removed, is left
+  /// alone. Returns whether it woke one.
+  Future<bool> promoteFocusVirtue(String focusKey) async {
+    final waiting = await _waitingVirtues();
+    if (!waiting.contains(focusKey)) return false;
+    final rows = await _habits.getAllIncludingRemoved();
+    final h = rows.where((h) => h.virtueKey == focusKey).firstOrNull;
+    waiting.remove(focusKey);
+    await _setWaitingVirtues(waiting);
+    if (h == null || h.deletedAt != null || !h.archived) return false;
+    await _habits.setArchived(h.id, false);
+    return true;
+  }
+
+  /// Virtue keys the seed planted resting and the rotation has not woken.
+  static const _kWaiting = 'franklin_waiting';
+
+  Future<Set<String>> _waitingVirtues() async {
+    final db = _habits.attachedDatabase;
+    final row = await (db.select(db.userPrefs)
+          ..where((p) => p.key.equals(_kWaiting)))
+        .getSingleOrNull();
+    final v = row?.value ?? '';
+    return {for (final k in v.split(',')) if (k.isNotEmpty) k};
+  }
+
+  Future<void> _setWaitingVirtues(Set<String> keys) {
+    final db = _habits.attachedDatabase;
+    return db.into(db.userPrefs).insertOnConflictUpdate(
+        UserPrefsCompanion.insert(key: _kWaiting, value: keys.join(',')));
   }
 
   // ── Marks ─────────────────────────────────────────────────────────────────

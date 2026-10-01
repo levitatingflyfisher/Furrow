@@ -1,9 +1,11 @@
 // lib/features/settings/presentation/settings_screen.dart
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
+import 'package:furrow/features/habits/data/focus_override_store.dart';
 import 'package:furrow/features/habits/domain/franklin_virtues.dart';
 import 'package:furrow/features/sanctuary_backup/presentation/backup_section.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
@@ -19,11 +21,15 @@ class SettingsScreen extends ConsumerWidget {
         ListTile(
           leading: const Icon(LucideIcons.bookOpen),
           title: const Text("Plant Franklin’s thirteen virtues"),
-          subtitle: const Text('Adds them as daily habits'),
+          subtitle: const Text(
+              'This week’s virtue as a daily habit; the rest wait for their week'),
           onTap: () async {
             // Say what actually happened: planting twice plants nothing.
-            final result =
-                await ref.read(habitsRepositoryProvider).seedFranklinVirtues();
+            final focus =
+                await focusVirtueOn(ref.read(appDatabaseProvider), clock.now());
+            final result = await ref
+                .read(habitsRepositoryProvider)
+                .seedFranklinVirtues(focusKey: focus.key);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 content: Text(seedMessage(result)),

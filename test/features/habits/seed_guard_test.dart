@@ -25,33 +25,36 @@ void main() {
           .toList();
 
   test('first plant: thirteen planted', () async {
-    final r = await repo.seedFranklinVirtues();
+    final r = await repo.seedFranklinVirtues(focusKey: 'temperance');
     expect(r.planted, 13);
-    expect(seedMessage(r), 'Planted the thirteen virtues.');
+    expect(seedMessage(r),
+        'Planted the thirteen virtues. Temperance is this week’s; the other '
+        'twelve rest until their week comes.');
   });
 
   test('a resting virtue is not planted a second time', () async {
-    await repo.seedFranklinVirtues();
+    await repo.seedFranklinVirtues(focusKey: 'temperance');
     final order = (await virtueRows())
         .firstWhere((h) => h.virtueKey == 'order');
+    await repo.setArchived(order.id, false);
     await repo.setArchived(order.id, true);
 
-    final r = await repo.seedFranklinVirtues();
+    final r = await repo.seedFranklinVirtues(focusKey: 'temperance');
     expect(r.planted, 0);
-    expect(r.resting, 1);
+    expect(r.resting, 12, reason: 'eleven waiting for their week, and Order');
     expect(await virtueRows(), hasLength(13));
     expect(seedMessage(r),
-        'All thirteen are already planted. 1 is resting; find it under '
+        'All thirteen are already planted. 12 are resting; find them under '
         'Resting below.');
   });
 
   test('a removed virtue is brought back, not duplicated', () async {
-    await repo.seedFranklinVirtues();
+    await repo.seedFranklinVirtues(focusKey: 'temperance');
     final silence = (await virtueRows())
         .firstWhere((h) => h.virtueKey == 'silence');
     await repo.removeHabit(silence.id);
 
-    final r = await repo.seedFranklinVirtues();
+    final r = await repo.seedFranklinVirtues(focusKey: 'temperance');
     expect(r.planted, 0);
     expect(r.restored, 1);
     expect(await virtueRows(), hasLength(13));
@@ -60,13 +63,15 @@ void main() {
   });
 
   test('a partly planted set plants only what is missing', () async {
-    await repo.seedFranklinVirtues();
+    await repo.seedFranklinVirtues(focusKey: 'temperance');
     final rows = await virtueRows();
     for (final h in rows.take(4)) {
       await repo.deleteHabitForever(h.id);
     }
-    final r = await repo.seedFranklinVirtues();
+    final r = await repo.seedFranklinVirtues(focusKey: 'temperance');
     expect(r.planted, 4);
-    expect(seedMessage(r), 'Planted 4 of the thirteen virtues.');
+    expect(seedMessage(r),
+        'Planted 4 of the thirteen virtues. Temperance is this week’s; the '
+        'other 3 rest until their week comes.');
   });
 }

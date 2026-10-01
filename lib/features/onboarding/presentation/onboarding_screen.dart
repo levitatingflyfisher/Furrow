@@ -1,10 +1,12 @@
 // lib/features/onboarding/presentation/onboarding_screen.dart
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:furrow/core/providers/core_providers.dart';
+import 'package:furrow/features/habits/data/focus_override_store.dart';
 import 'package:furrow/features/habits/domain/habit_enums.dart';
 import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
@@ -39,7 +41,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             unit: 'glasses',
             colorValue: OhColors.slate500.toARGB32());
       case _Template.franklin:
-        await repo.seedFranklinVirtues();
+        final focus =
+            await focusVirtueOn(ref.read(appDatabaseProvider), clock.now());
+        await repo.seedFranklinVirtues(focusKey: focus.key);
       case _Template.blank:
         break;
     }
@@ -159,7 +163,7 @@ class _TemplatePage extends StatelessWidget {
         _Choice(
           icon: LucideIcons.bookOpen,
           title: "Franklin’s thirteen virtues",
-          subtitle: 'Temperance, Silence, Order… his book of days.',
+          subtitle: 'One a week, as he worked them: this week’s first, the rest in turn.',
           onTap: () => onChoose(_Template.franklin),
         ),
         const SizedBox(height: AppSpacing.sm),

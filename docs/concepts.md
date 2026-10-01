@@ -74,7 +74,10 @@ day where he fell short and focusing on one virtue per week. Furrow ships his
 thirteen — in his own canonical order, each with its precept — as an **optional
 seed set** (off by default). A quiet **virtue of the week** rotates through the
 thirteen, derived from a fixed Monday anchor date (`virtues[weeksSinceAnchor % 13]`)
-independently of any habit rows. Precepts are runtime-overridable via a
+independently of any habit rows. Planting the seed adds this week's virtue as an
+active habit and the other twelve **resting**; each wakes when its week comes
+round, and stays awake after (nothing earned is taken away). A virtue you rest or
+wake by hand is yours: the rotation never touches it again. Precepts are runtime-overridable via a
 `UserPrefs` key (the editor UI is deferred; the key exists). This is where
 Furrow's name and shape come from: a book of days, reimagined.
 
