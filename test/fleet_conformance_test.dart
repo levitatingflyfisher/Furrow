@@ -12,6 +12,9 @@ void main() => runFleetConformance(const FleetAppConfig(
       // bare IconButton.filled/.filledTonal in lib/ from reopening the
       // ohStyle/Flutter 3.38.7 iconTheme collision.
       checks: {
+        // C13: the PWA loads nothing from Google's CDNs. web/flutter_bootstrap.js
+        // points CanvasKit and the engine's fallback fonts at this origin.
+        FleetCheck.c13WebSelfHosted,
         ...FleetAppConfig.withBundledFonts,
         FleetCheck.c8IconButtons,
         // C10: no raw exception text on screen; failures go through
