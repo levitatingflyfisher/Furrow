@@ -33,4 +33,58 @@ void main() {
     await db.close();
     await tester.pump(const Duration(seconds: 1));
   });
+
+  // doet-04, second half: the commit was only a bare app-bar word while
+  // eight colour circles dominated the form. A full-width filled Plant now
+  // closes the form, under the same rule (live only with a name).
+  testWidgets('a full-width Plant button sits at the foot of the form',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final db = AppDatabase(NativeDatabase.memory());
+    await tester.pumpWidget(ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      child: const MaterialApp(home: HabitEditSheet()),
+    ));
+    await tester.pump();
+
+    final foot = find.ancestor(
+      of: find.text('Plant'),
+      matching: find.byWidgetPredicate((w) => w is FilledButton),
+    );
+    expect(foot, findsOneWidget);
+    expect(tester.getSize(foot).width, greaterThanOrEqualTo(360 - 2 * 16 - 1));
+    FilledButton button() => tester.widget<FilledButton>(foot);
+    expect(button().onPressed, isNull);
+    await tester.enterText(find.byType(TextField).first, 'Read');
+    await tester.pump();
+    expect(button().onPressed, isNotNull);
+
+    await db.close();
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  // mind-in-mind-15, the picker half: the "Some days" chips were single
+  // letters too (two Ts, two Ss). They use the grid's two-letter names.
+  testWidgets('the Some days picker names each day in two letters',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final db = AppDatabase(NativeDatabase.memory());
+    await tester.pumpWidget(ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      child: const MaterialApp(home: HabitEditSheet()),
+    ));
+    await tester.pump();
+    await tester.tap(find.text('Some days'));
+    await tester.pump();
+    for (final d in const ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
+      expect(find.widgetWithText(FilterChip, d), findsOneWidget, reason: d);
+    }
+
+    await db.close();
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

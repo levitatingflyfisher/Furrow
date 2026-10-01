@@ -20,7 +20,9 @@ import 'package:furrow/shared/theme/app_colors.dart';
 import 'package:furrow/shared/theme/app_spacing.dart';
 import 'package:furrow/shared/widgets/load_failure.dart';
 
-const _weekdayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+// Two letters each, so no two columns share a label (mind-in-mind-15:
+// single letters gave two Ts and two Ss).
+const _weekdayLetters = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 /// The Today grid — Furrow's home surface. One [FurrowRow] per active habit,
 /// showing this week (Mon..Sun) with today's cell live.
@@ -158,23 +160,30 @@ class _Grid extends ConsumerWidget {
                       for (var i = 0; i < 7; i++)
                         Expanded(
                           child: Center(
-                            child: Text(
+                            // Scales down rather than breaking a label
+                            // across lines in a narrow column at large text.
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
                               _weekdayLetters[i],
+                              maxLines: 1,
                               style: Theme.of(context)
                                   .textTheme
-                                  .labelSmall
+                                  .labelMedium
                                   ?.copyWith(
+                                    // Full-strength ink, not a 70% faded
+                                    // variant (mind-in-mind-15).
                                     color: weekDays[i].toDateDay() == todayKey
                                         ? AppColors.furrow500
                                         : Theme.of(context)
                                             .colorScheme
-                                            .onSurfaceVariant
-                                            .withValues(alpha: 0.7),
+                                            .onSurface,
                                     fontWeight:
                                         weekDays[i].toDateDay() == todayKey
                                             ? FontWeight.w800
                                             : FontWeight.w500,
                                   ),
+                              ),
                             ),
                           ),
                         ),

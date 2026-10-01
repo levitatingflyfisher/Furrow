@@ -244,6 +244,17 @@ class _HabitEditSheetState extends ConsumerState<HabitEditSheet> {
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
+            // The commit, full width at the foot of the form (doet-04): the
+            // app-bar word alone was quieter than the colour circles. Same
+            // rule as the bar: live only once the name has a letter.
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              onPressed: _canSave ? _save : null,
+              child: Text(_editing ? 'Save' : 'Plant'),
+            ),
+            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),
@@ -363,7 +374,8 @@ class _WeekdayPicker extends StatelessWidget {
   const _WeekdayPicker({required this.mask, required this.onChanged});
   final int mask;
   final ValueChanged<int> onChanged;
-  static const _letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  // Two letters, like the Today grid, so no two chips share a label.
+  static const _letters = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
   @override
   Widget build(BuildContext context) {

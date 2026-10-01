@@ -4,10 +4,6 @@ import 'package:openhearth_design/openhearth_design.dart';
 abstract interface class SettingsRepository {
   Future<UserPrefs> getUserPrefs();
   Stream<UserPrefs> watchUserPrefs();
-  Future<void> setAnnualGoalHours(int hours);
-  Future<void> setMonthlyGoalHours(int? hours);
-  Future<void> setFlowTimerStyle(FlowTimerStyle style);
-  Future<void> setAutoStop({required bool enabled, int thresholdHours = 2});
   Future<void> setThemeMode(OhThemeModePreference mode);
   Future<void> setTimeFormat(TimeFormat format);
   /// Records that onboarding is done. The router sends a device with no

@@ -36,12 +36,24 @@ void main() {
           tester.widget<Text>(find.text(letter).first).style?.fontWeight;
 
       // Monday's column is today under the pinned clock...
-      expect(weightOf('M'), FontWeight.w800,
+      expect(weightOf('Mo'), FontWeight.w800,
           reason: 'pinned Monday must be the emphasized column');
-      // ...and the unique letters of every other weekday are not.
-      expect(weightOf('W'), isNot(FontWeight.w800));
-      expect(weightOf('F'), isNot(FontWeight.w800),
+      // ...and every other weekday is not.
+      expect(weightOf('We'), isNot(FontWeight.w800));
+      expect(weightOf('Fr'), isNot(FontWeight.w800),
           reason: 'the real wall-clock day must NOT leak into the strip');
+
+      // mind-in-mind-15: two letters each (no two Ts, no two Ss), at
+      // full-strength ink rather than a 70% faded variant.
+      final ink = Theme.of(tester.element(find.byType(TodayScreen)))
+          .colorScheme
+          .onSurface;
+      for (final d in const ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
+        expect(find.text(d), findsOneWidget, reason: d);
+        if (d == 'Mo') continue;
+        expect(tester.widget<Text>(find.text(d)).style?.color, ink,
+            reason: '$d is drawn at full strength');
+      }
     });
 
     // Drift schedules a zero-duration Timer when its query streams lose

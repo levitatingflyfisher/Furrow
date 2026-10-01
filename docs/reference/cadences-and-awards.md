@@ -61,7 +61,8 @@ alphabetical), each with its precept; precepts are overridable via the
 
 Earned once, permanently (never revoked). Checked by `AwardService.recheck()`
 after every mark; any newly-earned award triggers gentle confetti and a quiet
-fact line. Checks are **hardcoded** (no general criterion engine in v1).
+banner naming every award that mark earned ("Earned Seven: Seven days."), which
+stays until you tap OK. Checks are **hardcoded** (no general criterion engine in v1).
 
 | id | Name | Earned when | Check |
 |---|---|---|---|

@@ -16,20 +16,10 @@ void main() {
   tearDown(() => db.close());
 
   group('LocalSettingsRepository', () {
-    test('annualGoalHours defaults to 1000', () async {
-      final prefs = await repo.getUserPrefs();
-      expect(prefs.annualGoalHours, 1000);
-    });
-
-    test('flowTimerStyle defaults to gnomon', () async {
-      final prefs = await repo.getUserPrefs();
-      expect(prefs.flowTimerStyle, FlowTimerStyle.gnomon);
-    });
-
-    test('setAnnualGoalHours persists value', () async {
-      await repo.setAnnualGoalHours(500);
-      final prefs = await repo.getUserPrefs();
-      expect(prefs.annualGoalHours, 500);
+    test('time format defaults to 12-hour and persists', () async {
+      expect((await repo.getUserPrefs()).timeFormat, TimeFormat.h12);
+      await repo.setTimeFormat(TimeFormat.h24);
+      expect((await repo.getUserPrefs()).timeFormat, TimeFormat.h24);
     });
   });
 }

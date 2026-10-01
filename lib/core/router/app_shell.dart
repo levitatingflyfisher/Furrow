@@ -39,16 +39,38 @@ class _AppShellState extends ConsumerState<AppShell> {
     ref.listen(newlyEarnedAwardsProvider, (_, awards) {
       if (awards.isEmpty) return;
       _confetti.play();
-      final fact = kAwardById[awards.first.id]?.fact ?? 'A mark made.';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(fact, style: Theme.of(context).textTheme.titleMedium),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
+      // Every award the write earned, by name with its quiet line, and it
+      // stays until dismissed (audit finding 4: a four-second snackbar
+      // showing awards.first only was missed by a phone in a pocket).
+      final lines = [
+        for (final a in awards)
+          if (kAwardById[a.id] case final meta?)
+            'Earned ${meta.name}: ${meta.fact}'
+          else
+            'A mark made.',
+      ];
+      // Banners queue: a reveal still on screen is never swept away unread
+      // by the next one.
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showMaterialBanner(
+        MaterialBanner(
+          leading: const Icon(LucideIcons.sprout),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final l in lines)
+                Text(l, style: Theme.of(context).textTheme.titleMedium),
+            ],
           ),
-        );
+          actions: [
+            TextButton(
+              onPressed: messenger.hideCurrentMaterialBanner,
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
           ref.read(newlyEarnedAwardsProvider.notifier).state = const [];
